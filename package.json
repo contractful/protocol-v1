@@ -1,0 +1,42 @@
+{
+  "name": "contractfull",
+  "version": "1.0.0",
+  "description": "contractfull-protocol-v1",
+  "author": "Contractfull",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.13",
+    "@nomiclabs/hardhat-etherscan": "^3.1.1",
+    "@typechain/ethers-v5": "^10.1.0",
+    "@typechain/hardhat": "^6.1.3",
+    "@typescript-eslint/parser": "^5.40.0",
+    "chai": "^4.3.6",
+    "eslint-config-prettier": "^8.5.0",
+    "ethereum-waffle": "^3.4.4",
+    "ethers": "^5.7.1",
+    "hardhat": "^2.12.0",
+    "hardhat-deploy": "^0.11.18",
+    "hardhat-gas-reporter": "^1.0.9",
+    "prettier": "^2.7.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.24",
+    "solhint": "^3.3.7",
+    "solhint-plugin-prettier": "^0.0.5",
+    "solidity-coverage": "^0.8.2",
+    "typechain": "^8.1.0",
+    "typescript": "^4.8.4"
+  },
+  "dependencies": {
+    "@primitivefi/hardhat-dodoc": "^0.2.3",
+    "@types/chai": "^4.3.3",
+    "@types/debug": "^4.1.7",
+    "@types/mocha": "^10.0.0",
+    "@types/node": "^18.11.0",
+    "chai-ethers": "^0.0.1",
+    "dotenv": "^16.0.3",
+    "eslint": "^8.25.0",
+    "hardhat-contract-sizer": "^2.6.1",
+    "hardhat-interface-generator": "^0.0.6",
+    "hardhat-tracer": "^1.1.0-rc.9",
+    "mocha": "^10.0.0"
+  }
+}
