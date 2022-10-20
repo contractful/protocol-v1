@@ -66,6 +66,22 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   function createAgreement(AgreementCreationParams calldata params) external whenNotPaused {
     assert(agreements[agreementNonce].AGREEMENT_ID == 0);
 
+    if(params.contractor == address(0) || params.contractee == address(0)){
+      revert Errors.MG_ADDRESS_ZERO();
+    }
+
+    if (params.contractor == params.contractee) {
+      revert Errors.MG_CONTRACTOR_EQUALS_CONTRACTEE();
+    }
+
+    if(params.underlayingToken == address(0)) {
+      revert Errors.MG_INVALID_TOKEN();
+    }
+
+    if(params.maturityDate <= block.timestamp) {
+      revert Errors.MG_INVALID_MATURITY_DATE();
+    }
+
     agreements[agreementNonce] = Types.Agreement({
       AGREEMENT_ID: agreementNonce,
       MATURITY_DATE: params.maturityDate,
@@ -83,18 +99,12 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
 
   /**
    * @notice Activates an agreement
-   * @param agreementID The hash of the agreement to activate
+   * @param agreementID The ID of the agreement to activate
    * @dev The agreement needs to be created, inactive and the funds for the first cycle set
    */
   function activateAgreement(uint256 agreementID) external whenInactive(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
 
-    if (agreement.closed == true) {
-      revert Errors.MG_AGREEMENT_CLOSED();
-    }
-    if (agreement.active != false) {
-      revert Errors.MG_AGREEMENT_ACTIVE();
-    }
     if (agreement.CONTRACTOR != msg.sender) {
       revert Errors.MG_UNAUTHORIZED();
     }
@@ -106,7 +116,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
 
   /**
    * @notice Releases the funds for the current payment cycle
-   * @param agreementID The hash of the agreement to release the funds for
+   * @param agreementID The ID of the agreement to release the funds for
    * @dev Only the keeper or contractee can call this function
    */
   function migrateFunds(uint256 agreementID) external whenNotPaused whenActive(agreements[agreementID]) {

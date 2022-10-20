@@ -9,5 +9,9 @@ library Errors {
   error MG_AGREEMENT_INACTIVE(); // "The agreement is inactive. This might because the agreement has not been activated or because it has been closed"
   error MG_AGREEMENT_ACTIVE(); // "The agreement is active"
   error MG_UNAUTHORIZED(); // "msg.sender lacks the authorizations required"
+  error MG_CONTRACTOR_EQUALS_CONTRACTEE(); // "The contractor and the contractee cannot be the same"
+  error MG_INVALID_MATURITY_DATE(); // "The maturity date must be in the future"
+  error MG_INVALID_TOKEN(); // "The token is not an accepted token. It probably is a zero address"
+  error MG_ADDRESS_ZERO(); // "The address cannot be zero"
 }
   
