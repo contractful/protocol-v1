@@ -117,6 +117,48 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     SafeERC20.safeTransfer(IERC20(agreement.UNDERLAYING_TOKEN), agreement.CONTRACTOR, agreement.PAYMENT_CYCLE_AMOUNT);
   }
 
+  // View Methods
+
+  /**
+   * @notice Returns the parameters of an agreement
+   * @param agreementID The ID of the agreement
+   * @return maturityDate The date when the agreement expires
+   * @return paymentCycleDuration The duration of a payment cycle
+   * @return paymentCycleAmount The amount of tokens to be released per payment cycle
+   * @return underlayingToken The address of the token used for the agreement
+   * @return contractor The address of the contractor
+   * @return contractee The address of the contractee
+   * @return active Whether the agreement is active
+   * @return closed Whether the agreement is closed
+   * @dev an agreement can be not active because it has not been activated or because it is closed
+   */
+  function getAgreementParameters(uint256 agreementID)
+    external
+    view
+    returns (
+      uint128 maturityDate,
+      uint128 paymentCycleDuration,
+      uint128 paymentCycleAmount,
+      address underlayingToken,
+      address contractor,
+      address contractee,
+      bool active,
+      bool closed
+    )
+  {
+    Types.Agreement storage agreement = agreements[agreementID];
+    return (
+      agreement.MATURITY_DATE,
+      agreement.PAYMENT_CYCLE_DURATION,
+      agreement.PAYMENT_CYCLE_AMOUNT,
+      agreement.UNDERLAYING_TOKEN,
+      agreement.CONTRACTOR,
+      agreement.CONTRACTEE,
+      agreement.active,
+      agreement.closed
+    );
+  }
+
   // Managment methods. Only callable by Roles.GOVERNACE_ROLE
 
   /**
