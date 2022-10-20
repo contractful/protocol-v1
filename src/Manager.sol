@@ -111,7 +111,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
    */
   function migrateFunds(uint256 agreementID) external whenNotPaused whenActive(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
-    if (agreement.CONTRACTEE != msg.sender && !hasRole(Roles.KEEPER_ROLE, msg.sender)) {
+    if (agreement.CONTRACTEE != msg.sender && !hasRole(Roles.KEEPER_ROLE, msg.sender) && !hasRole(Roles.GOVERNANCE_ROLE, msg.sender)) {
       revert Errors.MG_UNAUTHORIZED();
     }
     SafeERC20.safeTransfer(IERC20(agreement.UNDERLAYING_TOKEN), agreement.CONTRACTOR, agreement.PAYMENT_CYCLE_AMOUNT);

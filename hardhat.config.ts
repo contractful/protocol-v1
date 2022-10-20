@@ -37,14 +37,17 @@ const config: HardhatUserConfig = {
       default: 0,
       1: process.env.MAINNET_DEPLOYER ?? '',
     },
-    employee: {
+    governance: {
       default: 1,
     },
-    employer: {
+    contractee: {
       default: 2,
     },
-    daoMember: {
+    contractor: {
       default: 3,
+    },
+    user1: {
+      default: 4,
     },
   },
 
