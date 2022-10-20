@@ -25,6 +25,13 @@ interface IManager {
    **/
   event AgreementActivated(uint256 agreementID);
 
+  /**
+   * @notice Emitted after funds were migrated
+   * @param agreement The ID of the agreement
+   * @param amount The amount of tokens that were migrated
+   **/
+  event FundsMigrated(uint256 agreement, uint256 amount);
+
   // VIEW Methods
 
   // MUTATIVE Methods
@@ -33,7 +40,6 @@ interface IManager {
     uint128 maturityDate;
     uint128 paymentCycleDuration;
     uint128 paymentCycleAmount;
-    uint128 challengeDuration;
     address underlayingToken;
     address contractor;
     address contractee;

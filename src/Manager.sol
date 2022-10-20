@@ -33,9 +33,9 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     _;
   }
 
-  modifier whenInactive(Types.Agreement storage agreement) {
+  modifier whenPending(Types.Agreement storage agreement) {
     if (agreement.closed || agreement.active) {
-      revert Errors.MG_AGREEMENT_ACTIVE();
+      revert Errors.MG_AGREEMENT_NOT_PENDING();
     }
     _;
   }
@@ -102,7 +102,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
    * @param agreementID The ID of the agreement to activate
    * @dev The agreement needs to be created, inactive and the funds for the first cycle set
    */
-  function activateAgreement(uint256 agreementID) external whenInactive(agreements[agreementID]) {
+  function activateAgreement(uint256 agreementID) external whenPending(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
 
     if (agreement.CONTRACTOR != msg.sender) {
@@ -125,6 +125,8 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
       revert Errors.MG_UNAUTHORIZED();
     }
     SafeERC20.safeTransfer(IERC20(agreement.UNDERLAYING_TOKEN), agreement.CONTRACTOR, agreement.PAYMENT_CYCLE_AMOUNT);
+
+    emit FundsMigrated(agreementID, agreement.PAYMENT_CYCLE_AMOUNT);
   }
 
   // View Methods
