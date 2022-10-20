@@ -23,7 +23,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   uint128 public establishmentFeeRate;
   uint256 public agreementNonce = 1;
 
-  // agreement hash to agreement
+  // agreement ID to agreement
   mapping(uint256 => Types.Agreement) public agreements;
 
   modifier whenActive(Types.Agreement storage agreement) {

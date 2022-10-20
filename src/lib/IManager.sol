@@ -13,7 +13,7 @@ interface IManager {
 
   /**
    * @notice Emitted after a event was creted
-   * @param agreementID The hash of the agreement
+   * @param agreementID The ID of the agreement
    * @param contractor The address of the contractor
    * @param contractee The address of the contractee
    **/
@@ -21,7 +21,7 @@ interface IManager {
 
   /**
    * @notice Emitted after a agreement was activated
-   * @param agreementID The hash of the agreement
+   * @param agreementID The ID of the agreement
    **/
   event AgreementActivated(uint256 agreementID);
 
@@ -47,7 +47,7 @@ interface IManager {
 
   /**
    * @notice Activates an agreement
-   * @param agreementID The hash of the agreement to activate
+   * @param agreementID The ID of the agreement to activate
    */
   function activateAgreement(uint256 agreementID) external;
 
@@ -58,7 +58,7 @@ interface IManager {
 
   /**
    * @notice Releases the funds for the current payment cycle
-   * @param agreementID The hash of the agreement to release the funds for
+   * @param agreementID The ID of the agreement to release the funds for
    */
   function migrateFunds(uint256 agreementID) external;
 
