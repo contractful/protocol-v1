@@ -1,5 +1,5 @@
 import {BigNumber} from 'ethers';
-import {deployments} from 'hardhat';
+import {deployments, ethers} from 'hardhat';
 import {Manager} from '../../typechain';
 import {setupFixture} from '../utils';
 import {User} from '../utils/types';
@@ -49,11 +49,30 @@ describe('Manager - migrateFunds', async function () {
     );
   });
 
-  it.only('Migrating funds when the agreement is active as an authorized user should be successful', async function () {
+  it('Migrating funds when it is not the migration period should revert', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
       Manager,
       'AgreementActivated'
     );
+
+    await expect(
+      contractee.Manager.migrateFunds(agreementID)
+    ).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
+  });
+
+  it('Migrating funds when the agreement is active, on a migration period as an authorized user should be successful', async function () {
+    await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
+      Manager,
+      'AgreementActivated'
+    );
+
+    const agreementParams = await Manager.getAgreementParameters(agreementID);
+
+    // fast forward to the migration period
+    await ethers.provider.send('evm_increaseTime', [
+      agreementParams.paymentCycleDuration.toNumber() * 2, // 2 cycles
+    ]);
+    await ethers.provider.send('evm_mine', []);
 
     await expect(contractee.Manager.migrateFunds(agreementID)).to.emit(
       Manager,

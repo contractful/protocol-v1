@@ -13,5 +13,6 @@ library Errors {
   error MG_INVALID_MATURITY_DATE(); // "The maturity date must be in the future"
   error MG_INVALID_TOKEN(); // "The token is not an accepted token. It probably is a zero address"
   error MG_ADDRESS_ZERO(); // "The address cannot be zero"
+  error MG_INVALID_MIGRATION_PERIOD(); // "The migration period is not valid"
 }
   

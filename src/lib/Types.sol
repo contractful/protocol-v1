@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 library Types {
     struct Agreement {
         uint256 AGREEMENT_ID;
+        uint128 ACTIVATION_DATE;
         uint128 MATURITY_DATE;
         uint128 PAYMENT_CYCLE_DURATION;
         uint128 PAYMENT_CYCLE_AMOUNT;

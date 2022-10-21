@@ -27,14 +27,14 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   mapping(uint256 => Types.Agreement) public agreements;
 
   modifier whenActive(Types.Agreement storage agreement) {
-    if (!agreement.active) {
+    if(!agreement.active) {
       revert Errors.MG_AGREEMENT_INACTIVE();
     }
     _;
   }
 
   modifier whenPending(Types.Agreement storage agreement) {
-    if (agreement.closed || agreement.active) {
+    if(agreement.closed || agreement.active) {
       revert Errors.MG_AGREEMENT_NOT_PENDING();
     }
     _;
@@ -48,7 +48,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
 
     challengeDuration = _challengeDuration;
 
-    if (_governance == address(0)) {
+    if(_governance == address(0)) {
       // Prevent setting _governance to null account
       _governance = _msgSender();
     }
@@ -66,11 +66,11 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   function createAgreement(AgreementCreationParams calldata params) external whenNotPaused {
     assert(agreements[agreementNonce].AGREEMENT_ID == 0);
 
-    if(params.contractor == address(0) || params.contractee == address(0)){
+    if(params.contractor == address(0) || params.contractee == address(0)) {
       revert Errors.MG_ADDRESS_ZERO();
     }
 
-    if (params.contractor == params.contractee) {
+    if(params.contractor == params.contractee) {
       revert Errors.MG_CONTRACTOR_EQUALS_CONTRACTEE();
     }
 
@@ -84,6 +84,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
 
     agreements[agreementNonce] = Types.Agreement({
       AGREEMENT_ID: agreementNonce,
+      ACTIVATION_DATE: 0,
       MATURITY_DATE: params.maturityDate,
       PAYMENT_CYCLE_DURATION: params.paymentCycleDuration,
       PAYMENT_CYCLE_AMOUNT: params.paymentCycleAmount,
@@ -105,10 +106,11 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   function activateAgreement(uint256 agreementID) external whenPending(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
 
-    if (agreement.CONTRACTOR != msg.sender) {
+    if(agreement.CONTRACTOR != msg.sender) {
       revert Errors.MG_UNAUTHORIZED();
     }
 
+    agreement.ACTIVATION_DATE = uint128(block.timestamp);
     agreement.active = true;
 
     emit AgreementActivated(agreementID);
@@ -118,12 +120,49 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
    * @notice Releases the funds for the current payment cycle
    * @param agreementID The ID of the agreement to release the funds for
    * @dev Only the keeper or contractee can call this function
+   * @dev A for loop is used to calculate the migration periods instead of storing them on chain to reduce gas costs
+   * @dev To reduce gas costs, the migration periods are calculated inside the function, instead of calling calculateMigrationPeriods
+   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
    */
   function migrateFunds(uint256 agreementID) external whenNotPaused whenActive(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
-    if (agreement.CONTRACTEE != msg.sender && !hasRole(Roles.KEEPER_ROLE, msg.sender) && !hasRole(Roles.GOVERNANCE_ROLE, msg.sender)) {
+    if(
+      agreement.CONTRACTEE != msg.sender &&
+      !hasRole(Roles.KEEPER_ROLE, msg.sender) &&
+      !hasRole(Roles.GOVERNANCE_ROLE, msg.sender)
+    ) {
       revert Errors.MG_UNAUTHORIZED();
     }
+
+    uint128 agreementDuration = agreement.MATURITY_DATE - agreement.ACTIVATION_DATE;
+    uint128 migrations = agreementDuration / agreement.PAYMENT_CYCLE_DURATION;
+    bool validMigrationPeriod = false;
+    for (uint128 i = 0; i < migrations; i++) {
+      uint128 migrationPeriod = agreement.ACTIVATION_DATE + (agreement.PAYMENT_CYCLE_DURATION * (i + 1));
+      if(block.timestamp >= migrationPeriod) {
+        if(block.timestamp <= migrationPeriod + challengeDuration) {
+          validMigrationPeriod = true;
+          break;
+        }
+      } else {
+        break;
+      }
+    }
+    if(!validMigrationPeriod) {
+      bool reminder = agreementDuration % agreement.PAYMENT_CYCLE_DURATION != 0;
+      if(reminder) {
+        if(
+          block.timestamp >= agreement.MATURITY_DATE && block.timestamp <= agreement.MATURITY_DATE + challengeDuration
+        ) {
+          validMigrationPeriod = true;
+        }
+      }
+    }
+
+    if(!validMigrationPeriod) {
+      revert Errors.MG_INVALID_MIGRATION_PERIOD();
+    }
+
     SafeERC20.safeTransfer(IERC20(agreement.UNDERLAYING_TOKEN), agreement.CONTRACTOR, agreement.PAYMENT_CYCLE_AMOUNT);
 
     emit FundsMigrated(agreementID, agreement.PAYMENT_CYCLE_AMOUNT);
@@ -132,8 +171,35 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   // View Methods
 
   /**
+   * @notice Calculates the migration periods for an agreement
+   * @param agreementDuration The duration of the agreement
+   * @param paymentCycleDuration The duration of the payment cycle
+   * @return migrationPeriods The migration periods for the agreement
+   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
+   * @dev the return value is a list of the starting migration periods. To actualy calculate the period you need to add the challenge duration
+   */
+  function calculateMigrationPeriods(uint128 agreementDuration, uint128 paymentCycleDuration)
+    public
+    view
+    returns (uint128[] memory migrationPeriods)
+  {
+    Types.Agreement storage agreement = agreements[agreementNonce];
+
+    uint128 migrations = agreementDuration / paymentCycleDuration;
+    bool reminder = agreementDuration % paymentCycleDuration != 0;
+
+    for (uint128 i = 0; i < migrations; i++) {
+      migrationPeriods[i] = agreement.ACTIVATION_DATE + (paymentCycleDuration * i + 1);
+    }
+    if(reminder) {
+      migrationPeriods[migrations] = agreement.MATURITY_DATE;
+    }
+  }
+
+  /**
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
+   * @return activationDate The timestamp when the agreement was activated
    * @return maturityDate The date when the agreement expires
    * @return paymentCycleDuration The duration of a payment cycle
    * @return paymentCycleAmount The amount of tokens to be released per payment cycle
@@ -148,6 +214,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     external
     view
     returns (
+      uint128 activationDate,
       uint128 maturityDate,
       uint128 paymentCycleDuration,
       uint128 paymentCycleAmount,
@@ -160,6 +227,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   {
     Types.Agreement storage agreement = agreements[agreementID];
     return (
+      agreement.ACTIVATION_DATE,
       agreement.MATURITY_DATE,
       agreement.PAYMENT_CYCLE_DURATION,
       agreement.PAYMENT_CYCLE_AMOUNT,
