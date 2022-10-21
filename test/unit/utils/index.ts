@@ -1,6 +1,7 @@
 import {BigNumber} from 'ethers';
 import {ethers, getNamedAccounts} from 'hardhat';
 import {
+  ACCEPTANCE_PERIOD,
   AGREEMENT_DURATION,
   PAYMENT_CYCLE_DURATION,
 } from './../../utils/constants';
@@ -51,11 +52,13 @@ export const setupTestContracts = async (
 
   // setup mock responses
   await mocks.AgreementToken.mock.transfer.returns(true);
+  await mocks.AgreementToken.mock.transferFrom.returns(true);
 
   // create agreement
   const agreementID = await deployedManager.agreementNonce();
   const agreementTokenAddress = mocks.AgreementToken.address;
   await testContractee.Manager.createAgreement({
+    acceptanceDeadline: (await getTimeStamp()) + ACCEPTANCE_PERIOD,
     maturityDate: (await getTimeStamp()) + AGREEMENT_DURATION,
     paymentCycleDuration: PAYMENT_CYCLE_DURATION,
     paymentCycleAmount: PAYMENT_CYCLE_AMOUNT,

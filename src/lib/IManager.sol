@@ -30,13 +30,52 @@ interface IManager {
    * @param agreement The ID of the agreement
    * @param amount The amount of tokens that were migrated
    **/
-  event FundsMigrated(uint256 agreement, uint256 amount);
+  event FundsMigrated(uint256 agreement, uint128 amount);
+
+  /**
+  * @notice Emitted after funds are deposited for the upcoming cycle 
+  * @param agreement The ID of the agreement
+  * @param amount The amount of tokens that were deposited
+   */
+  event FundsDeposited(uint256 agreement, uint128 amount);
 
   // VIEW Methods
+
+  /**
+   * @notice Returns the parameters of an agreement
+   * @param agreementID The ID of the agreement
+   * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
+   * @return activationDate The timestamp when the agreement was activated
+   * @return maturityDate The date when the agreement expires
+   * @return paymentCycleDuration The duration of a payment cycle
+   * @return paymentCycleAmount The amount of tokens to be released per payment cycle
+   * @return establishmentFeeRate The rate of the establishment fee
+   * @return penalizationAmount The amount of tokens that will be kept in case of a penalization
+   * @return underlayingToken The address of the token used for the agreement
+   * @return contractor The address of the contractor
+   * @return contractee The address of the contractee
+   * @dev an agreement can be not active because it has not been activated or because it is closed
+   */
+  function getAgreementParameters(uint256 agreementID)
+    external
+    view
+    returns (
+      uint128 acceptanceDeadline,
+      uint128 activationDate,
+      uint128 maturityDate,
+      uint128 paymentCycleDuration,
+      uint128 paymentCycleAmount,
+      uint128 establishmentFeeRate,
+      uint128 penalizationAmount,
+      address underlayingToken,
+      address contractor,
+      address contractee
+    );
 
   // MUTATIVE Methods
 
   struct AgreementCreationParams {
+    uint128 acceptanceDeadline;
     uint128 maturityDate;
     uint128 paymentCycleDuration;
     uint128 paymentCycleAmount;
@@ -70,7 +109,7 @@ interface IManager {
 
   /**
    * @notice Withdraws protocol fees to a target address
-   * @param agreementID The identifier of the agreement 
+   * @param agreementID The identifier of the agreement
    * @param amount The amount of tokens claimed
    * @param to The address receiving the fees
    **/
@@ -81,12 +120,12 @@ interface IManager {
   ) external;
 
   /**
-   * @notice Stops all actions on all agreements 
+   * @notice Stops all actions on all agreements
    **/
   function freezeAgreements() external;
 
   /**
-   * @notice Cancel a freeze, makes actions available again on all agreements 
+   * @notice Cancel a freeze, makes actions available again on all agreements
    **/
   function unfreezeAgreements() external;
 }

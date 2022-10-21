@@ -1,7 +1,8 @@
 import {BigNumber} from 'ethers';
-import {deployments} from 'hardhat';
+import {deployments, ethers} from 'hardhat';
 import {Manager} from '../../typechain';
-import {setupFixture} from '../utils';
+import {getTimeStamp, setupFixture} from '../utils';
+import {ACCEPTANCE_PERIOD} from '../utils/constants';
 import {User} from '../utils/types';
 import {expect} from './helpers/chai-setup';
 import {setupTestContracts} from './utils';
@@ -38,6 +39,17 @@ describe('Manager - activateAgreement', async function () {
     await expect(
       contractor.Manager.activateAgreement(agreementID)
     ).to.be.revertedWith('MG_AGREEMENT_NOT_PENDING');
+  });
+
+  it('Activating an agreement after the acceptance deadline should revert', async function () {
+    await ethers.provider.send('evm_increaseTime', [
+      (await getTimeStamp()) + ACCEPTANCE_PERIOD,
+    ]);
+    await ethers.provider.send('evm_mine', []);
+
+    await expect(
+      contractor.Manager.activateAgreement(agreementID)
+    ).to.be.revertedWith('MG_ACCEPTANCE_PERIOD_EXPIRED');
   });
 
   it('Activating an agreement for which msg.sender is not the contractor should revert', async function () {

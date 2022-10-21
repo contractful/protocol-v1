@@ -9,7 +9,7 @@ import {
 
 import {deployMockContract} from '@ethereum-waffle/mock-contract';
 
-import {Manager, Manager__factory} from '../../typechain';
+import {Manager, Manager__factory, TestToken__factory} from '../../typechain';
 
 export async function setupUsers<
   T extends {[contractName: string]: Contract | ContractFactory}
@@ -46,9 +46,13 @@ export async function setupFixture(fixtureName: string) {
   const AgreementTokenM = await deployMockContract(signerDeployer, IERC20.abi);
   const ManagerM = await deployMockContract(signerDeployer, Manager.abi);
 
-  const contracts: any = {
+  const contracts = {
     Manager: <Manager>await ethers.getContract('Manager'),
     ManagerF: <Manager__factory>await ethers.getContractFactory('Manager'),
+
+    TestTokenF: <TestToken__factory>(
+      await ethers.getContractFactory('TestToken')
+    ),
   };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);

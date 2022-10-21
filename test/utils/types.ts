@@ -5,6 +5,7 @@ import {MockContract} from '@ethereum-waffle/mock-contract';
 import {Manager, Manager__factory} from '../../typechain';
 
 export interface AgreementCreationParams {
+  acceptanceDeadline: BigNumber;
   maturityDate: BigNumber;
   paymentCycleDuration: BigNumber;
   paymentCycleAmount: BigNumber;
@@ -18,13 +19,12 @@ export type Deployer = {
 };
 
 export type Mocks = {
-  SafeERC20: MockContract;
   AgreementToken: MockContract;
   Manager: MockContract;
 };
 
 export type User = {
   address: string;
-  Token?: Contract;
+  TestToken?: Contract;
   Manager: Manager | MockContract;
 };

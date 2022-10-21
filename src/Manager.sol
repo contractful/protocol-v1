@@ -19,42 +19,55 @@ pragma solidity ^0.8.0;
 
 contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   // General values. Only modifiable by Roles.GOVERNANCE
+  uint256 public agreementNonce = 1;
+  uint128 public penalizationAmount;
   uint128 public challengeDuration;
   uint128 public establishmentFeeRate;
-  uint256 public agreementNonce = 1;
+  uint256 internal accruedEstablishmentFee = 0;
 
   // agreement ID to agreement
   mapping(uint256 => Types.Agreement) public agreements;
 
   modifier whenActive(Types.Agreement storage agreement) {
-    if(!agreement.active) {
+    if (!agreement.state.active) {
       revert Errors.MG_AGREEMENT_INACTIVE();
     }
     _;
   }
 
   modifier whenPending(Types.Agreement storage agreement) {
-    if(agreement.closed || agreement.active) {
+    if (agreement.state.closed || agreement.state.active) {
       revert Errors.MG_AGREEMENT_NOT_PENDING();
     }
     _;
   }
 
-  function initialize(uint128 _challengeDuration, address _governance) public initializer {
-    /* both initializers below are called to comply with OpenZeppelin's
+  modifier onlyAuthorized(Types.Agreement storage agreement) {
+    if (
+      agreement.parameters.CONTRACTEE != msg.sender &&
+      !hasRole(Roles.KEEPER_ROLE, msg.sender) &&
+      !hasRole(Roles.GOVERNANCE_ROLE, msg.sender)
+    ) {
+      revert Errors.MG_UNAUTHORIZED();
+    }
+    _;
+  }
+
+  function initialize(uint128 challengeDuration_, address governance_) public initializer {
+    /* Both initializers below are called to comply with OpenZeppelin's
     recommendations even if in practice they don't do anything */
     __AccessControl_init();
     __Pausable_init_unchained();
 
-    challengeDuration = _challengeDuration;
+    challengeDuration = challengeDuration_;
 
-    if(_governance == address(0)) {
-      // Prevent setting _governance to null account
-      _governance = _msgSender();
+    if (governance_ == address(0)) {
+      // Prevent setting governance_ to null account
+      governance_ = _msgSender();
     }
 
-    _grantRole(DEFAULT_ADMIN_ROLE, _governance);
-    _grantRole(Roles.GOVERNANCE_ROLE, _governance);
+    _grantRole(DEFAULT_ADMIN_ROLE, governance_);
+    _grantRole(Roles.GOVERNANCE_ROLE, governance_);
     _setRoleAdmin(Roles.KEEPER_ROLE, Roles.GOVERNANCE_ROLE);
   }
 
@@ -64,35 +77,39 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
    * @dev The agreement default state is inactive, it needs to be activated by the contractor
    */
   function createAgreement(AgreementCreationParams calldata params) external whenNotPaused {
-    assert(agreements[agreementNonce].AGREEMENT_ID == 0);
+    assert(agreements[agreementNonce].parameters.AGREEMENT_ID == 0);
 
-    if(params.contractor == address(0) || params.contractee == address(0)) {
+    if (params.contractor == address(0) || params.contractee == address(0)) {
       revert Errors.MG_ADDRESS_ZERO();
     }
 
-    if(params.contractor == params.contractee) {
+    if (params.contractor == params.contractee) {
       revert Errors.MG_CONTRACTOR_EQUALS_CONTRACTEE();
     }
 
-    if(params.underlayingToken == address(0)) {
+    if (params.underlayingToken == address(0)) {
       revert Errors.MG_INVALID_TOKEN();
     }
 
-    if(params.maturityDate <= block.timestamp) {
+    if (params.maturityDate <= block.timestamp) {
       revert Errors.MG_INVALID_MATURITY_DATE();
     }
 
-    agreements[agreementNonce] = Types.Agreement({
+    // Secure the funds for the first cycle
+    SafeERC20.safeTransferFrom(IERC20(params.underlayingToken), msg.sender, address(this), params.paymentCycleAmount);
+
+    agreements[agreementNonce].parameters = Types.AgreementParameters({
       AGREEMENT_ID: agreementNonce,
+      ACCEPTANCE_DEADLINE: params.acceptanceDeadline,
       ACTIVATION_DATE: 0,
       MATURITY_DATE: params.maturityDate,
       PAYMENT_CYCLE_DURATION: params.paymentCycleDuration,
       PAYMENT_CYCLE_AMOUNT: params.paymentCycleAmount,
+      ESTABLISHMENT_FEE_RATE: establishmentFeeRate,
+      PENALIZATION_AMOUNT: penalizationAmount,
       UNDERLAYING_TOKEN: params.underlayingToken,
       CONTRACTOR: params.contractor,
-      CONTRACTEE: params.contractee,
-      active: false,
-      closed: false
+      CONTRACTEE: params.contractee
     });
     emit AgreementCreated(agreementNonce, params.contractor, params.contractee);
     agreementNonce++;
@@ -106,12 +123,16 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   function activateAgreement(uint256 agreementID) external whenPending(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
 
-    if(agreement.CONTRACTOR != msg.sender) {
+    if (agreement.parameters.CONTRACTOR != msg.sender) {
       revert Errors.MG_UNAUTHORIZED();
     }
 
-    agreement.ACTIVATION_DATE = uint128(block.timestamp);
-    agreement.active = true;
+    if(block.timestamp > agreement.parameters.ACCEPTANCE_DEADLINE){
+      revert Errors.MG_ACCEPTANCE_PERIOD_EXPIRED();
+    }
+
+    agreement.parameters.ACTIVATION_DATE = uint128(block.timestamp);
+    agreement.state.active = true;
 
     emit AgreementActivated(agreementID);
   }
@@ -124,23 +145,23 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
    * @dev To reduce gas costs, the migration periods are calculated inside the function, instead of calling calculateMigrationPeriods
    * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
    */
-  function migrateFunds(uint256 agreementID) external whenNotPaused whenActive(agreements[agreementID]) {
+  function migrateFunds(uint256 agreementID)
+    external
+    whenNotPaused
+    whenActive(agreements[agreementID])
+    onlyAuthorized(agreements[agreementID])
+  {
     Types.Agreement storage agreement = agreements[agreementID];
-    if(
-      agreement.CONTRACTEE != msg.sender &&
-      !hasRole(Roles.KEEPER_ROLE, msg.sender) &&
-      !hasRole(Roles.GOVERNANCE_ROLE, msg.sender)
-    ) {
-      revert Errors.MG_UNAUTHORIZED();
-    }
 
-    uint128 agreementDuration = agreement.MATURITY_DATE - agreement.ACTIVATION_DATE;
-    uint128 migrations = agreementDuration / agreement.PAYMENT_CYCLE_DURATION;
+    uint128 agreementDuration = agreement.parameters.MATURITY_DATE - agreement.parameters.ACTIVATION_DATE;
+    uint128 migrations = agreementDuration / agreement.parameters.PAYMENT_CYCLE_DURATION;
     bool validMigrationPeriod = false;
+    bool reminder = agreementDuration % agreement.parameters.PAYMENT_CYCLE_DURATION != 0;
     for (uint128 i = 0; i < migrations; i++) {
-      uint128 migrationPeriod = agreement.ACTIVATION_DATE + (agreement.PAYMENT_CYCLE_DURATION * (i + 1));
-      if(block.timestamp >= migrationPeriod) {
-        if(block.timestamp <= migrationPeriod + challengeDuration) {
+      uint128 migrationPeriod = agreement.parameters.ACTIVATION_DATE +
+        (agreement.parameters.PAYMENT_CYCLE_DURATION * (i + 1));
+      if (block.timestamp >= migrationPeriod) {
+        if (block.timestamp <= migrationPeriod + challengeDuration) {
           validMigrationPeriod = true;
           break;
         }
@@ -148,24 +169,53 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
         break;
       }
     }
-    if(!validMigrationPeriod) {
-      bool reminder = agreementDuration % agreement.PAYMENT_CYCLE_DURATION != 0;
-      if(reminder) {
-        if(
-          block.timestamp >= agreement.MATURITY_DATE && block.timestamp <= agreement.MATURITY_DATE + challengeDuration
+    if (!validMigrationPeriod) {
+      if (reminder) {
+        if (
+          block.timestamp >= agreement.parameters.MATURITY_DATE &&
+          block.timestamp <= agreement.parameters.MATURITY_DATE + challengeDuration
         ) {
           validMigrationPeriod = true;
         }
       }
     }
 
-    if(!validMigrationPeriod) {
+    if (!validMigrationPeriod) {
       revert Errors.MG_INVALID_MIGRATION_PERIOD();
     }
 
-    SafeERC20.safeTransfer(IERC20(agreement.UNDERLAYING_TOKEN), agreement.CONTRACTOR, agreement.PAYMENT_CYCLE_AMOUNT);
+    uint128 normalizedPaymentAmount = (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) / 100;
+    accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
 
-    emit FundsMigrated(agreementID, agreement.PAYMENT_CYCLE_AMOUNT);
+    SafeERC20.safeTransfer(
+      IERC20(agreement.parameters.UNDERLAYING_TOKEN),
+      agreement.parameters.CONTRACTOR,
+      normalizedPaymentAmount
+    );
+
+    emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+  }
+
+  function depositFundsForNextCycle(uint256 agreementID)
+    external
+    whenNotPaused
+    whenActive(agreements[agreementID])
+    onlyAuthorized(agreements[agreementID])
+  {
+    Types.Agreement storage agreement = agreements[agreementID];
+    if (agreement.state.escrowedFunds != 0) {
+      revert Errors.MG_FUNDS_ALREADY_SECURED();
+    }
+
+    agreement.state.escrowedFunds += agreement.parameters.PAYMENT_CYCLE_AMOUNT;
+    SafeERC20.safeTransferFrom(
+      IERC20(agreement.parameters.UNDERLAYING_TOKEN),
+      agreement.parameters.CONTRACTEE,
+      address(this),
+      agreement.parameters.PAYMENT_CYCLE_AMOUNT
+    );
+
+    emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
   }
 
   // View Methods
@@ -189,71 +239,103 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     bool reminder = agreementDuration % paymentCycleDuration != 0;
 
     for (uint128 i = 0; i < migrations; i++) {
-      migrationPeriods[i] = agreement.ACTIVATION_DATE + (paymentCycleDuration * i + 1);
+      migrationPeriods[i] = agreement.parameters.ACTIVATION_DATE + (paymentCycleDuration * i + 1);
     }
-    if(reminder) {
-      migrationPeriods[migrations] = agreement.MATURITY_DATE;
+    if (reminder) {
+      migrationPeriods[migrations] = agreement.parameters.MATURITY_DATE;
     }
   }
 
   /**
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
+   * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
    * @return activationDate The timestamp when the agreement was activated
    * @return maturityDate The date when the agreement expires
    * @return paymentCycleDuration The duration of a payment cycle
    * @return paymentCycleAmount The amount of tokens to be released per payment cycle
+   * @return establishmentFeeRate_ The rate of the establishment fee
+   * @return penalizationAmount_ The amount of tokens that will be kept in case of a penalization
    * @return underlayingToken The address of the token used for the agreement
    * @return contractor The address of the contractor
    * @return contractee The address of the contractee
-   * @return active Whether the agreement is active
-   * @return closed Whether the agreement is closed
    * @dev an agreement can be not active because it has not been activated or because it is closed
    */
   function getAgreementParameters(uint256 agreementID)
     external
     view
     returns (
+      uint128 acceptanceDeadline,
       uint128 activationDate,
       uint128 maturityDate,
       uint128 paymentCycleDuration,
       uint128 paymentCycleAmount,
+      uint128 establishmentFeeRate_,
+      uint128 penalizationAmount_,
       address underlayingToken,
       address contractor,
-      address contractee,
+      address contractee
+    )
+  {
+    Types.Agreement storage agreement = agreements[agreementID];
+    return (
+      agreement.parameters.ACCEPTANCE_DEADLINE,
+      agreement.parameters.ACTIVATION_DATE,
+      agreement.parameters.MATURITY_DATE,
+      agreement.parameters.PAYMENT_CYCLE_DURATION,
+      agreement.parameters.PAYMENT_CYCLE_AMOUNT,
+      agreement.parameters.ESTABLISHMENT_FEE_RATE,
+      agreement.parameters.PENALIZATION_AMOUNT,
+      agreement.parameters.UNDERLAYING_TOKEN,
+      agreement.parameters.CONTRACTOR,
+      agreement.parameters.CONTRACTEE
+    );
+  }
+
+  /**
+   * @notice Returns the state of an agreement
+   * @param agreementID The ID of the agreement
+   * @param escrowedFunds The amount of funds escrowed in the agreement
+   * @param active Whether the agreement is active
+   * @param closed Whether the agreement is closed
+   */
+  function getAgreementState(uint256 agreementID)
+    external
+    view
+    returns (
+      uint128 escrowedFunds,
       bool active,
       bool closed
     )
   {
     Types.Agreement storage agreement = agreements[agreementID];
-    return (
-      agreement.ACTIVATION_DATE,
-      agreement.MATURITY_DATE,
-      agreement.PAYMENT_CYCLE_DURATION,
-      agreement.PAYMENT_CYCLE_AMOUNT,
-      agreement.UNDERLAYING_TOKEN,
-      agreement.CONTRACTOR,
-      agreement.CONTRACTEE,
-      agreement.active,
-      agreement.closed
-    );
+    return (agreement.state.escrowedFunds, agreement.state.active, agreement.state.closed);
   }
 
   // Managment methods. Only callable by Roles.GOVERNACE_ROLE
 
   /**
    * @notice Sets the challenge duration for all agreements
-   * @param _challengeDuration The new challenge duration
+   * @param challengeDuration_ The new challenge duration
    */
-  function setChallengeDuration(uint128 _challengeDuration) external onlyRole(Roles.GOVERNANCE_ROLE) {
-    challengeDuration = _challengeDuration;
+  function setChallengeDuration(uint128 challengeDuration_) external onlyRole(Roles.GOVERNANCE_ROLE) {
+    challengeDuration = challengeDuration_;
   }
 
   /**
    * @notice Set the establishment protocol fee rate
-   **/
-  function setEstablishmentFeeRate(uint128 _establishmentFeeRate) external onlyRole(Roles.GOVERNANCE_ROLE) {
-    establishmentFeeRate = _establishmentFeeRate;
+   * @param establishmentFeeRate_ The new establishment fee rate
+   */
+  function setEstablishmentFeeRate(uint128 establishmentFeeRate_) external onlyRole(Roles.GOVERNANCE_ROLE) {
+    establishmentFeeRate = establishmentFeeRate_;
+  }
+
+  /**
+   * @notice Set the penalization amount for the protocol
+   * @param penalizationAmount_ The new penalization amount
+   */
+  function setPenalizationAmount(uint128 penalizationAmount_) external onlyRole(Roles.GOVERNANCE_ROLE) {
+    establishmentFeeRate = penalizationAmount_;
   }
 
   /**
@@ -267,8 +349,11 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     uint128 amount,
     address to
   ) external onlyRole(Roles.GOVERNANCE_ROLE) {
+    if (amount > accruedEstablishmentFee) {
+      revert Errors.MG_AMOUNT_TOO_HIGH();
+    }
     Types.Agreement storage agreement = agreements[agreementID];
-    SafeERC20.safeTransfer(IERC20(agreement.UNDERLAYING_TOKEN), to, amount);
+    SafeERC20.safeTransfer(IERC20(agreement.parameters.UNDERLAYING_TOKEN), to, amount);
   }
 
   /**

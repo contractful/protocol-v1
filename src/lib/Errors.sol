@@ -14,5 +14,8 @@ library Errors {
   error MG_INVALID_TOKEN(); // "The token is not an accepted token. It probably is a zero address"
   error MG_ADDRESS_ZERO(); // "The address cannot be zero"
   error MG_INVALID_MIGRATION_PERIOD(); // "The migration period is not valid"
+  error MG_AMOUNT_TOO_HIGH(); // "The amount is too high"
+  error MG_FUNDS_ALREADY_SECURED(); // "The funds are already secured"
+  error MG_ACCEPTANCE_PERIOD_EXPIRED(); // "The acceptance period has expired"
 }
   

@@ -2,16 +2,30 @@
 pragma solidity ^0.8.0;
 
 library Types {
-    struct Agreement {
-        uint256 AGREEMENT_ID;
-        uint128 ACTIVATION_DATE;
-        uint128 MATURITY_DATE;
-        uint128 PAYMENT_CYCLE_DURATION;
-        uint128 PAYMENT_CYCLE_AMOUNT;
-        address UNDERLAYING_TOKEN;
-        address CONTRACTOR;
-        address CONTRACTEE;
-        bool active;
-        bool closed;
-    }
+/* The protocol's fee rate and penalization amount are stored in each agreement so if they changes, they will not affect
+ previous agreements */
+  struct AgreementParameters{
+    uint256 AGREEMENT_ID;
+    uint128 ACCEPTANCE_DEADLINE;
+    uint128 ACTIVATION_DATE;
+    uint128 MATURITY_DATE;
+    uint128 PAYMENT_CYCLE_DURATION;
+    uint128 PAYMENT_CYCLE_AMOUNT;
+    uint128 ESTABLISHMENT_FEE_RATE; 
+    uint128 PENALIZATION_AMOUNT;
+    address UNDERLAYING_TOKEN;
+    address CONTRACTOR;
+    address CONTRACTEE;
+  }
+
+  struct AgreementState {
+    uint128 escrowedFunds;
+    bool active;
+    bool closed;
+  }
+
+  struct Agreement {
+    AgreementParameters parameters;
+    AgreementState state;
+  }
 }
