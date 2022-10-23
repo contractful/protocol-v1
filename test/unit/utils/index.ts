@@ -63,7 +63,6 @@ export const setupTestContracts = async (
     paymentCycleDuration: PAYMENT_CYCLE_DURATION,
     paymentCycleAmount: PAYMENT_CYCLE_AMOUNT,
     underlayingToken: agreementTokenAddress,
-    contractee: testContractee.address,
     contractor: testContractor.address,
   });
 

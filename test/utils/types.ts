@@ -11,7 +11,6 @@ export interface AgreementCreationParams {
   paymentCycleAmount: BigNumber;
   underlayingToken: string;
   contractor: string;
-  contractee: string;
 }
 export type Deployer = {
   Manager: Manager;

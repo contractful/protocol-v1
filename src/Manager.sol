@@ -24,7 +24,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   uint128 public establishmentFeeRate;
   uint256 internal accruedEstablishmentFee = 0;
 
-  // These variables will be removed soon when the proxy implementation is updated.
+  // These variables will be removed soon once the proxy implementation is updated.
   uint256 public agreementNonce = 1;
   mapping(address => uint256[]) public userAgreements;
 
@@ -82,11 +82,11 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   function createAgreement(AgreementCreationParams calldata params) external whenNotPaused {
     assert(agreements[agreementNonce].parameters.AGREEMENT_ID == 0);
 
-    if (params.contractor == address(0) || params.contractee == address(0)) {
+    if (params.contractor == address(0)) {
       revert Errors.MG_ADDRESS_ZERO();
     }
 
-    if (params.contractor == params.contractee) {
+    if (params.contractor == msg.sender) {
       revert Errors.MG_CONTRACTOR_EQUALS_CONTRACTEE();
     }
 
@@ -112,12 +112,12 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
       PENALIZATION_AMOUNT: penalizationAmount,
       UNDERLAYING_TOKEN: params.underlayingToken,
       CONTRACTOR: params.contractor,
-      CONTRACTEE: params.contractee
+      CONTRACTEE: msg.sender 
     });
 
-    userAgreements[params.contractee].push(agreementNonce);
+    userAgreements[msg.sender].push(agreementNonce);
 
-    emit AgreementCreated(agreementNonce, params.contractor, params.contractee);
+    emit AgreementCreated(agreementNonce, params.contractor, msg.sender);
     agreementNonce++;
   }
 

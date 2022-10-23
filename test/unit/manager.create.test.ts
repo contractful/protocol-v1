@@ -27,23 +27,23 @@ describe('Manager - createAgreement', async function () {
     agreementParams = await Manager.getAgreementParameters(agreementID);
   });
 
-  it('Creating an agreement with an address zero for either the contractee or contractor should revert', async function () {
+  it('Creating an agreement with an address zero for the contractor should revert', async function () {
     const modifiedAgreementParams = {
       ...agreementParams,
-      contractee: ethers.constants.AddressZero,
+      contractor: ethers.constants.AddressZero,
     };
     await expect(
       Manager.createAgreement(modifiedAgreementParams)
     ).to.be.revertedWith('MG_ADDRESS_ZERO');
   });
 
-  it('Creating an agreement with the same addresses for the parameters: contractee, contractor should revert', async function () {
+  it('Creating an agreement where the msg.sender is also the contractor should revert', async function () {
     const modifiedAgreementParams = {
       ...agreementParams,
-      contractee: contractor.address,
+      contractor: contractee.address,
     };
     await expect(
-      Manager.createAgreement(modifiedAgreementParams)
+      contractee.Manager.createAgreement(modifiedAgreementParams)
     ).to.be.revertedWith('MG_CONTRACTOR_EQUALS_CONTRACTEE');
   });
 

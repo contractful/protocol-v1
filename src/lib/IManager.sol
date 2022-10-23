@@ -81,7 +81,6 @@ interface IManager {
     uint128 paymentCycleAmount;
     address underlayingToken;
     address contractor;
-    address contractee;
   }
 
   /**
