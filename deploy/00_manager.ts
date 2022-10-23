@@ -3,7 +3,7 @@ import {DeployFunction} from 'hardhat-deploy/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {Manager} from '../typechain';
 
-import {CHALLENGE_DURATION} from './constants';
+import {CHALLENGE_DURATION} from '../utils/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const log = debugModule('deploy-setup');
