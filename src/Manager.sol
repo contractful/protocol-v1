@@ -19,11 +19,14 @@ pragma solidity ^0.8.0;
 
 contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   // General values. Only modifiable by Roles.GOVERNANCE
-  uint256 public agreementNonce = 1;
   uint128 public penalizationAmount;
   uint128 public challengeDuration;
   uint128 public establishmentFeeRate;
   uint256 internal accruedEstablishmentFee = 0;
+
+  // These variables will be removed soon when the proxy implementation is updated.
+  uint256 public agreementNonce = 1;
+  mapping(address => uint256[]) public userAgreements;
 
   // agreement ID to agreement
   mapping(uint256 => Types.Agreement) public agreements;
@@ -111,6 +114,9 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
       CONTRACTOR: params.contractor,
       CONTRACTEE: params.contractee
     });
+
+    userAgreements[params.contractee].push(agreementNonce);
+
     emit AgreementCreated(agreementNonce, params.contractor, params.contractee);
     agreementNonce++;
   }
@@ -133,6 +139,8 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
 
     agreement.parameters.ACTIVATION_DATE = uint128(block.timestamp);
     agreement.state.active = true;
+
+    userAgreements[msg.sender].push(agreementNonce);
 
     emit AgreementActivated(agreementID);
   }
