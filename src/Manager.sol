@@ -116,6 +116,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     });
 
     userAgreements[msg.sender].push(agreementNonce);
+    userAgreements[params.contractor].push(agreementNonce);
 
     emit AgreementCreated(agreementNonce, params.contractor, msg.sender);
     agreementNonce++;
