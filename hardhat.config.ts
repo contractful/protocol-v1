@@ -106,6 +106,11 @@ const config: HardhatUserConfig = {
       url: node_url('mumbai'),
       accounts: accounts('mumbai'),
       tags: ['test', 'staging'],
+      verify: {
+        etherscan: {
+          apiKey: process.env.POLYGONSCAN_KEY,
+        },
+      },
     },
     arbitrum: {
       url: node_url('arbitrum'),
@@ -131,13 +136,11 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: 0,
   },
-  etherscan: {
-    // Your API key for Etherscan
-    // Obtain one at https://etherscan.io/
-    apiKey: {
-      kovan: process.env.ETHERSCAN_KEY ?? '',
-      polygonMumbai: process.env.ETHERSCAN_KEY ?? '',
-      goerli: process.env.ETHERSCAN_KEY ?? '',
+  verify: {
+    etherscan: {
+      // Your API key for Etherscan
+      // Obtain one at https://etherscan.io/
+      apiKey: process.env.ETHERSCAN_KEY ?? '',
     },
   },
   dodoc: {},
