@@ -321,6 +321,15 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
     return (agreement.state.escrowedFunds, agreement.state.active, agreement.state.closed);
   }
 
+/**
+* @notice Returns the user agreements
+* @param user The address of the user
+* @return agreementIDs The IDs of the agreements
+ */
+  function getUserAgreements(address user) view external returns (uint256[] memory) {
+    return userAgreements[user];
+  }
+
   // Managment methods. Only callable by Roles.GOVERNACE_ROLE
 
   /**

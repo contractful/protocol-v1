@@ -1,4 +1,4 @@
-import {ethers} from 'ethers';
+import {BigNumber, ethers} from 'ethers';
 import {deployments} from 'hardhat';
 import {Manager} from '../../typechain';
 import {setupFixture} from '../utils';
@@ -14,15 +14,21 @@ describe('Manager - createAgreement', async function () {
   let contractee: User, contractor: User;
   let Manager: Manager;
   let agreementParams: AgreementCreationParams;
+  let agreementID: BigNumber;
 
   beforeEach(async function () {
     const {deployer, mocks, users} = await setup();
-    const {deployedManager, testContractor, testContractee, agreementID} =
-      await setupTestContracts(deployer, mocks, users);
+    const {
+      deployedManager,
+      testContractor,
+      testContractee,
+      agreementID: tempAgreementID,
+    } = await setupTestContracts(deployer, mocks, users);
 
     Manager = deployedManager;
     contractee = testContractee;
     contractor = testContractor;
+    agreementID = tempAgreementID;
 
     agreementParams = await Manager.getAgreementParameters(agreementID);
   });
@@ -55,6 +61,13 @@ describe('Manager - createAgreement', async function () {
     await expect(
       Manager.createAgreement(modifiedAgreementParams)
     ).to.be.revertedWith('MG_INVALID_MATURITY_DATE');
+  });
+
+  it('Getting the user agreements after creating an agreement should return the agreement ID', async function () {
+    const userAgreements = await Manager.getUserAgreements(contractor.address);
+    console.log(userAgreements);
+    console.log(BigNumber.from(agreementID));
+    expect(userAgreements).to.deep.include(BigNumber.from(agreementID));
   });
 
   // we don't test to create a valid agreement because it was successful in the setup contract beforeEach call
