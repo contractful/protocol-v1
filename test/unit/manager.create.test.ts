@@ -65,8 +65,6 @@ describe('Manager - createAgreement', async function () {
 
   it('Getting the user agreements after creating an agreement should return the agreement ID', async function () {
     const userAgreements = await Manager.getUserAgreements(contractor.address);
-    console.log(userAgreements);
-    console.log(BigNumber.from(agreementID));
     expect(userAgreements).to.deep.include(BigNumber.from(agreementID));
   });
 

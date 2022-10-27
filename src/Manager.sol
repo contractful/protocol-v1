@@ -230,32 +230,6 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   // View Methods
 
   /**
-   * @notice Calculates the migration periods for an agreement
-   * @param agreementDuration The duration of the agreement
-   * @param paymentCycleDuration The duration of the payment cycle
-   * @return migrationPeriods The migration periods for the agreement
-   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
-   * @dev the return value is a list of the starting migration periods. To actualy calculate the period you need to add the challenge duration
-   */
-  function calculateMigrationPeriods(uint128 agreementDuration, uint128 paymentCycleDuration)
-    public
-    view
-    returns (uint128[] memory migrationPeriods)
-  {
-    Types.Agreement storage agreement = agreements[agreementNonce];
-
-    uint128 migrations = agreementDuration / paymentCycleDuration;
-    bool reminder = agreementDuration % paymentCycleDuration != 0;
-
-    for (uint128 i = 0; i < migrations; i++) {
-      migrationPeriods[i] = agreement.parameters.ACTIVATION_DATE + (paymentCycleDuration * i + 1);
-    }
-    if (reminder) {
-      migrationPeriods[migrations] = agreement.parameters.MATURITY_DATE;
-    }
-  }
-
-  /**
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
    * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
