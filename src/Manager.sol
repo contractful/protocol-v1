@@ -1,23 +1,22 @@
 // SPDX-License-Identifier: MIT
 
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./lib/IManager.sol";
 import "./lib/Types.sol";
 import "./lib/Roles.sol";
 import "./lib/Errors.sol";
+import "./Validator.sol";
 
 /**
- * @title IManager
+ * @title Manager
  * @author Contractful Labs
  * @notice Lets users create and manage contract work agreements
  */
 
 pragma solidity ^0.8.0;
 
-contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
+contract Manager is IManager, Validator {
   // General values. Only modifiable by Roles.GOVERNANCE
   uint128 public penalizationAmount;
   uint128 public challengeDuration;
@@ -57,6 +56,7 @@ contract Manager is IManager, AccessControlUpgradeable, PausableUpgradeable {
   }
 
   function initialize(uint128 challengeDuration_, address governance_) public initializer {
+    initialize_();
     /* Both initializers below are called to comply with OpenZeppelin's
     recommendations even if in practice they don't do anything */
     __AccessControl_init();
