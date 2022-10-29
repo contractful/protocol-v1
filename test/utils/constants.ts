@@ -11,3 +11,4 @@ export const PAYMENT_CYCLE_AMOUNT = parseEther('1'); // payment amount for a suc
 export const ESTABLISHMENT_FEE_RATE = 0;
 export const GOVERNANCE_ROLE = keccak256(toUtf8Bytes('GOVERNANCE_ROLE'));
 export const KEEPER_ROLE = keccak256(toUtf8Bytes('KEEPER_ROLE'));
+export const DESCRIPTION_URI = 'https://api.test.com/1';

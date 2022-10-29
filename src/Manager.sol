@@ -112,7 +112,8 @@ contract Manager is IManager, Validator {
       PENALIZATION_AMOUNT: penalizationAmount,
       UNDERLAYING_TOKEN: params.underlayingToken,
       CONTRACTOR: params.contractor,
-      CONTRACTEE: msg.sender 
+      CONTRACTEE: msg.sender,
+      DESCRIPTION_URI: params.descriptionURI
     });
 
     userAgreements[msg.sender].push(agreementNonce);
@@ -242,6 +243,7 @@ contract Manager is IManager, Validator {
    * @return underlayingToken The address of the token used for the agreement
    * @return contractor The address of the contractor
    * @return contractee The address of the contractee
+   * @return descriptionURI The URI of the agreement description
    * @dev an agreement can be not active because it has not been activated or because it is closed
    */
   function getAgreementParameters(uint256 agreementID)
@@ -257,7 +259,8 @@ contract Manager is IManager, Validator {
       uint128 penalizationAmount_,
       address underlayingToken,
       address contractor,
-      address contractee
+      address contractee,
+      string memory descriptionURI
     )
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -271,7 +274,8 @@ contract Manager is IManager, Validator {
       agreement.parameters.PENALIZATION_AMOUNT,
       agreement.parameters.UNDERLAYING_TOKEN,
       agreement.parameters.CONTRACTOR,
-      agreement.parameters.CONTRACTEE
+      agreement.parameters.CONTRACTEE,
+      agreement.parameters.DESCRIPTION_URI
     );
   }
 

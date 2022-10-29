@@ -8,7 +8,11 @@ import {
 
 import {Manager} from '../../../typechain';
 import {getTimeStamp, setupUser} from '../../utils';
-import {GOVERNANCE_ROLE, PAYMENT_CYCLE_AMOUNT} from '../../utils/constants';
+import {
+  DESCRIPTION_URI,
+  GOVERNANCE_ROLE,
+  PAYMENT_CYCLE_AMOUNT,
+} from '../../utils/constants';
 import {Deployer, Mocks, User} from '../../utils/types';
 
 //Functional setup for Position Contract Tests :
@@ -64,6 +68,7 @@ export const setupTestContracts = async (
     paymentCycleAmount: PAYMENT_CYCLE_AMOUNT,
     underlayingToken: agreementTokenAddress,
     contractor: testContractor.address,
+    descriptionURI: DESCRIPTION_URI,
   });
 
   return {

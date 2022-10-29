@@ -54,6 +54,7 @@ interface IManager {
    * @return underlayingToken The address of the token used for the agreement
    * @return contractor The address of the contractor
    * @return contractee The address of the contractee
+   * @return descriptionURI The URI of the agreement description
    * @dev an agreement can be not active because it has not been activated or because it is closed
    */
   function getAgreementParameters(uint256 agreementID)
@@ -69,7 +70,8 @@ interface IManager {
       uint128 penalizationAmount,
       address underlayingToken,
       address contractor,
-      address contractee
+      address contractee,
+      string memory descriptionURI
     );
 
   // MUTATIVE Methods
@@ -81,6 +83,7 @@ interface IManager {
     uint128 paymentCycleAmount;
     address underlayingToken;
     address contractor;
+    string descriptionURI;
   }
 
   /**
