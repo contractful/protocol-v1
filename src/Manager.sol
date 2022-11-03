@@ -135,7 +135,7 @@ contract Manager is IManager, Validator {
       revert Errors.MG_UNAUTHORIZED();
     }
 
-    if(block.timestamp > agreement.parameters.ACCEPTANCE_DEADLINE){
+    if (block.timestamp > agreement.parameters.ACCEPTANCE_DEADLINE) {
       revert Errors.MG_ACCEPTANCE_PERIOD_EXPIRED();
     }
 
@@ -152,7 +152,6 @@ contract Manager is IManager, Validator {
    * @param agreementID The ID of the agreement to release the funds for
    * @dev Only the keeper or contractee can call this function
    * @dev A for loop is used to calculate the migration periods instead of storing them on chain to reduce gas costs
-   * @dev To reduce gas costs, the migration periods are calculated inside the function, instead of calling calculateMigrationPeriods
    * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
    */
   function migrateFunds(uint256 agreementID)
@@ -299,12 +298,12 @@ contract Manager is IManager, Validator {
     return (agreement.state.escrowedFunds, agreement.state.active, agreement.state.closed);
   }
 
-/**
-* @notice Returns the user agreements
-* @param user The address of the user
-* @return agreementIDs The IDs of the agreements
- */
-  function getUserAgreements(address user) view external returns (uint256[] memory) {
+  /**
+   * @notice Returns the user agreements
+   * @param user The address of the user
+   * @return agreementIDs The IDs of the agreements
+   */
+  function getUserAgreements(address user) external view returns (uint256[] memory) {
     return userAgreements[user];
   }
 
