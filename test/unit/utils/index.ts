@@ -62,6 +62,7 @@ export const setupTestContracts = async (
   const agreementID = await deployedManager.agreementNonce();
   const agreementTokenAddress = mocks.AgreementToken.address;
   await testContractee.Manager.createAgreement({
+    beginningDate: getTimeStamp(),
     acceptanceDeadline: (await getTimeStamp()) + ACCEPTANCE_PERIOD,
     maturityDate: (await getTimeStamp()) + AGREEMENT_DURATION,
     paymentCycleDuration: PAYMENT_CYCLE_DURATION,

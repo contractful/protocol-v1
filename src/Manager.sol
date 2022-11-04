@@ -103,8 +103,8 @@ contract Manager is IManager, Validator {
 
     agreements[agreementNonce].parameters = Types.AgreementParameters({
       AGREEMENT_ID: agreementNonce,
+      BEGINNING_DATE: params.beginningDate,
       ACCEPTANCE_DEADLINE: params.acceptanceDeadline,
-      ACTIVATION_DATE: 0,
       MATURITY_DATE: params.maturityDate,
       PAYMENT_CYCLE_DURATION: params.paymentCycleDuration,
       PAYMENT_CYCLE_AMOUNT: params.paymentCycleAmount,
@@ -139,7 +139,6 @@ contract Manager is IManager, Validator {
       revert Errors.MG_ACCEPTANCE_PERIOD_EXPIRED();
     }
 
-    agreement.parameters.ACTIVATION_DATE = uint128(block.timestamp);
     agreement.state.active = true;
 
     userAgreements[msg.sender].push(agreementNonce);
@@ -162,12 +161,12 @@ contract Manager is IManager, Validator {
   {
     Types.Agreement storage agreement = agreements[agreementID];
 
-    uint128 agreementDuration = agreement.parameters.MATURITY_DATE - agreement.parameters.ACTIVATION_DATE;
+    uint128 agreementDuration = agreement.parameters.MATURITY_DATE - agreement.parameters.BEGINNING_DATE;
     uint128 migrations = agreementDuration / agreement.parameters.PAYMENT_CYCLE_DURATION;
     bool validMigrationPeriod = false;
     bool reminder = agreementDuration % agreement.parameters.PAYMENT_CYCLE_DURATION != 0;
     for (uint128 i = 0; i < migrations; i++) {
-      uint128 migrationPeriod = agreement.parameters.ACTIVATION_DATE +
+      uint128 migrationPeriod = agreement.parameters.BEGINNING_DATE +
         (agreement.parameters.PAYMENT_CYCLE_DURATION * (i + 1));
       if (block.timestamp >= migrationPeriod) {
         if (block.timestamp <= migrationPeriod + challengeDuration) {
@@ -232,8 +231,8 @@ contract Manager is IManager, Validator {
   /**
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
+   * @return beginningDate The beginning date of the agreement
    * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
-   * @return activationDate The timestamp when the agreement was activated
    * @return maturityDate The date when the agreement expires
    * @return paymentCycleDuration The duration of a payment cycle
    * @return paymentCycleAmount The amount of tokens to be released per payment cycle
@@ -249,8 +248,8 @@ contract Manager is IManager, Validator {
     external
     view
     returns (
+      uint128 beginningDate,
       uint128 acceptanceDeadline,
-      uint128 activationDate,
       uint128 maturityDate,
       uint128 paymentCycleDuration,
       uint128 paymentCycleAmount,
@@ -264,8 +263,8 @@ contract Manager is IManager, Validator {
   {
     Types.Agreement storage agreement = agreements[agreementID];
     return (
+      agreement.parameters.BEGINNING_DATE,
       agreement.parameters.ACCEPTANCE_DEADLINE,
-      agreement.parameters.ACTIVATION_DATE,
       agreement.parameters.MATURITY_DATE,
       agreement.parameters.PAYMENT_CYCLE_DURATION,
       agreement.parameters.PAYMENT_CYCLE_AMOUNT,

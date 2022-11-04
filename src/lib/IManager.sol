@@ -33,9 +33,9 @@ interface IManager {
   event FundsMigrated(uint256 agreement, uint128 amount);
 
   /**
-  * @notice Emitted after funds are deposited for the upcoming cycle 
-  * @param agreement The ID of the agreement
-  * @param amount The amount of tokens that were deposited
+   * @notice Emitted after funds are deposited for the upcoming cycle
+   * @param agreement The ID of the agreement
+   * @param amount The amount of tokens that were deposited
    */
   event FundsDeposited(uint256 agreement, uint128 amount);
 
@@ -44,8 +44,8 @@ interface IManager {
   /**
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
+   * @return beginningDate The beginning date of the agreement
    * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
-   * @return activationDate The timestamp when the agreement was activated
    * @return maturityDate The date when the agreement expires
    * @return paymentCycleDuration The duration of a payment cycle
    * @return paymentCycleAmount The amount of tokens to be released per payment cycle
@@ -61,8 +61,8 @@ interface IManager {
     external
     view
     returns (
+      uint128 beginningDate,
       uint128 acceptanceDeadline,
-      uint128 activationDate,
       uint128 maturityDate,
       uint128 paymentCycleDuration,
       uint128 paymentCycleAmount,
@@ -77,6 +77,7 @@ interface IManager {
   // MUTATIVE Methods
 
   struct AgreementCreationParams {
+    uint128 beginningDate;
     uint128 acceptanceDeadline;
     uint128 maturityDate;
     uint128 paymentCycleDuration;
