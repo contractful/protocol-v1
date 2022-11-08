@@ -23,10 +23,11 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
   uint128 public challengeDuration;
   uint128 public establishmentFeeRate;
   uint256 internal accruedEstablishmentFee = 0;
-  uint256 internal payableAgreementID;
 
   // These variables will be removed soon once the proxy implementation is updated.
   uint256 public agreementNonce = 1;
+  uint256[] internal agreementIDs;
+
   mapping(address => uint256[]) public userAgreements;
 
   // agreement ID to agreement
@@ -120,6 +121,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
 
     userAgreements[msg.sender].push(agreementNonce);
     userAgreements[params.contractor].push(agreementNonce);
+    agreementIDs.push(agreementNonce);
 
     emit AgreementCreated(agreementNonce, params.contractor, msg.sender);
     agreementNonce++;
@@ -147,16 +149,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
 
     emit AgreementActivated(agreementID);
   }
-
-  // TODO: this is added so that checkUpkeep has access to the agreement ID that funds are released to
-  
-  function setPayableAgreementID(uint256 agreementID)
-    external
-    whenActive(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
-    {
-      payableAgreementID = agreementID;
-    }
 
   function checkFundsMigration(uint256 agreementID)
     internal
@@ -226,28 +218,8 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
   }
 
-  function checkUpkeep(bytes calldata)
-    external
-    view
-    override
-    whenNotPaused
-    returns (bool upkeepNeeded, bytes memory /* performData */)
-  {
-    upkeepNeeded = checkFundsMigration(payableAgreementID);
-  }
-
-  function performUpkeep(bytes calldata /* performData */)
-    external
-    override 
-    whenNotPaused 
-  {
-    if (checkFundsMigration(payableAgreementID)){
-      migrateFunds(payableAgreementID);
-    }
-  }
-
   function depositFundsForNextCycle(uint256 agreementID)
-    external
+    internal
     whenNotPaused
     whenActive(agreements[agreementID])
     onlyAuthorized(agreements[agreementID])
@@ -266,6 +238,40 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     );
 
     emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+  }
+
+  function checkUpkeep(bytes calldata)
+    external
+    view
+    override
+    whenNotPaused
+    returns (bool upkeepNeeded, bytes memory performData)
+  {
+    uint256[] memory agreementsToMigrateFunds = new uint256[](agreementIDs.length);
+    uint256 count = 0;
+
+    for (uint256 idx = 0; idx < agreementIDs.length; idx++){
+      if (checkFundsMigration(agreementIDs[idx])) {
+        upkeepNeeded = true;
+        agreementsToMigrateFunds[count] = agreementIDs[idx];
+        count++;
+      }
+    }
+    performData = abi.encode(agreementsToMigrateFunds);
+    return (upkeepNeeded, performData);
+  }
+
+  function performUpkeep(bytes calldata performData)
+    external
+    override 
+    whenNotPaused 
+  {
+    uint256[] memory agreementsToMigrateFunds = abi.decode(performData, (uint256[]));
+
+    for (uint256 idx = 0; idx < agreementsToMigrateFunds.length; idx++) {
+      migrateFunds(agreementsToMigrateFunds[idx]);
+      depositFundsForNextCycle(agreementsToMigrateFunds[idx]);
+    }
   }
 
   // View Methods
