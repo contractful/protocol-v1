@@ -21,8 +21,9 @@ library Types {
 
   struct AgreementState {
     uint128 escrowedFunds;
-    bool active;
     bool closed;
+    bool challenged;
+    bool active;
   }
 
   struct Agreement {

@@ -35,7 +35,7 @@ describe('Manager - migrateFunds', async function () {
   it('Migrating funds for an inactive agreement should revert', async function () {
     await expect(
       contractee.Manager.migrateFunds(agreementID)
-    ).to.be.revertedWith('MG_AGREEMENT_INACTIVE');
+    ).to.be.revertedWith('MG_NOT_ONGOING');
   });
 
   it('Migrating funds where the msg.sender is not the contractee, keeper or governance should revert', async function () {

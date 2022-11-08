@@ -10,8 +10,8 @@ const setup = deployments.createFixture(async () => {
   return setupFixture('all');
 });
 
-describe('Manager - migrateFunds', async function () {
-  let contractee: User, contractor: User, user1: User;
+describe('Manager - challenge agreement', async function () {
+  let contractee: User, contractor: User;
   let Manager: Manager;
   let agreementID: BigNumber;
 
@@ -20,47 +20,46 @@ describe('Manager - migrateFunds', async function () {
     const {
       deployedManager,
       testContractor,
-      agreementID: agreementIDTemp,
       testContractee,
-      testUser1,
+      agreementID: agreementIDTemp,
     } = await setupTestContracts(deployer, mocks, users);
 
     Manager = deployedManager;
     contractee = testContractee;
     contractor = testContractor;
     agreementID = agreementIDTemp; // agreementIDTemp == agreementID
-    user1 = testUser1;
   });
 
-  it('Depositing funds when an agreement is not active should revert', async function () {
+  it('Challenging an agreement that is not ongoing should revert', async function () {
     await expect(
-      contractee.Manager.depositFundsForNextCycle(agreementID)
+      contractor.Manager.challengeAgreement(agreementID)
     ).to.be.revertedWith('MG_NOT_ONGOING');
   });
 
-  it('Depositing funds as an unauthorized user should revert', async function () {
+  it('Challenging an ongoing agreement should go through', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
-      Manager,
+      contractor.Manager,
       'AgreementActivated'
     );
 
-    await expect(
-      user1.Manager.depositFundsForNextCycle(agreementID)
-    ).to.be.revertedWith('MG_UNAUTHORIZED');
+    await expect(contractee.Manager.challengeAgreement(agreementID)).to.emit(
+      contractee.Manager,
+      'AgreementChallenged'
+    );
   });
 
-  it('Depositing funds twice for the same cycle should revert', async function () {
+  it('Challenging an agreement successfully should set the agreement to challenged', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
-      Manager,
+      contractor.Manager,
       'AgreementActivated'
     );
 
-    await expect(
-      contractee.Manager.depositFundsForNextCycle(agreementID)
-    ).to.emit(Manager, 'FundsDeposited');
+    await expect(contractee.Manager.challengeAgreement(agreementID)).to.emit(
+      contractee.Manager,
+      'AgreementChallenged'
+    );
 
-    await expect(
-      contractee.Manager.depositFundsForNextCycle(agreementID)
-    ).to.be.revertedWith('MG_FUNDS_ALREADY_SECURED');
+    const agreement = await Manager.getAgreementState(agreementID);
+    expect(agreement.challenged).to.be.true;
   });
 });

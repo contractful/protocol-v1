@@ -39,6 +39,24 @@ interface IManager {
    */
   event FundsDeposited(uint256 agreement, uint128 amount);
 
+  /**
+   * @notice Emitted after a agreement was cancelled
+   * @param agreementID The ID of the agreement
+   */
+  event AgreementCancelled(uint256 agreementID);
+
+  /**
+   * @notice Emitted after the escrowd funds for an agreement were splitted
+   * @param agreementID The ID of the agreement
+   */
+  event FundsSplitted(uint256 agreementID, uint128 contractorAmount, uint128 contracteeAmount);
+
+  /**
+   * @notice Emitted after an agreement was challenged
+   * @param agreementID the ID of the agreement
+   */
+  event AgreementChallenged(uint256 agreementID);
+
   // VIEW Methods
 
   /**
@@ -72,6 +90,24 @@ interface IManager {
       address contractor,
       address contractee,
       string memory descriptionURI
+    );
+
+  /**
+   * @notice Returns the state of an agreement
+   * @param agreementID The ID of the agreement
+   * @param escrowedFunds The amount of funds escrowed in the agreement
+   * @param closed Whether the agreement is closed
+   * @param challenged Whether the agreement is challenged
+   * @param active Whether the agreement is active
+   */
+  function getAgreementState(uint256 agreementID)
+    external
+    view
+    returns (
+      uint128 escrowedFunds,
+      bool closed,
+      bool challenged,
+      bool active
     );
 
   // MUTATIVE Methods
@@ -109,6 +145,34 @@ interface IManager {
    * @param agreementID The ID of the agreement to release the funds for
    */
   function migrateFunds(uint256 agreementID) external;
+
+  /**
+   * @notice Closes an agreement and releases the escrowed funds accordingly to the agreement state
+   * @param agreementID The ID of the agreement
+   */
+  function cancelAgreement(uint256 agreementID) external;
+
+  /**
+   * @notice Sets the agreement state to challenged and emmits an event that will be captured by the Contractful DAO(
+   * currently a multisig)
+   * @param agreementID The ID of the agreement
+   */
+  function challengeAgreement(uint256 agreementID) external;
+
+  /**
+   * @notice Releases the escrowed funds accordingly to the percentages passed as parameters
+   * @notice For the moment the function is only callable by governance wich is a multisig wallet. However in the future
+   * it will only be callable by the Contractful DAO
+   * @param agreementID The ID of the agreement
+   * @param contractorPercentage The percentage of the escrowed funds to be released to the contractor
+   * @param contracteePercentage The percentage of the escrowed funds to be released to the contractee
+   * @dev Only integers can be passed as pecentages. The function does't calculate for decimal points
+   */
+  function splitFunds(
+    uint256 agreementID,
+    uint128 contractorPercentage,
+    uint128 contracteePercentage
+  ) external;
 
   /**
    * @notice Withdraws protocol fees to a target address
