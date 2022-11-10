@@ -10,7 +10,7 @@ const setup = deployments.createFixture(async () => {
   return setupFixture('all');
 });
 
-describe('Manager - activateAgreement', async function () {
+describe('Manager - cancel agreement', async function () {
   let contractee: User, contractor: User;
   let Manager: Manager;
   let agreementID: BigNumber;
@@ -35,9 +35,5 @@ describe('Manager - activateAgreement', async function () {
       contractee.Manager,
       'AgreementCancelled'
     );
-
-    const agreementState = await Manager.getAgreementState(agreementID);
-
-    expect(agreementState.escrowedFunds.toString()).to.be.equal('0');
   });
 });

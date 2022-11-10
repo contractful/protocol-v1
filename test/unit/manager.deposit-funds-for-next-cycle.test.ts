@@ -10,7 +10,7 @@ const setup = deployments.createFixture(async () => {
   return setupFixture('all');
 });
 
-describe('Manager - migrateFunds', async function () {
+describe('Manager - deposit', async function () {
   let contractee: User, contractor: User, user1: User;
   let Manager: Manager;
   let agreementID: BigNumber;
@@ -54,10 +54,6 @@ describe('Manager - migrateFunds', async function () {
       Manager,
       'AgreementActivated'
     );
-
-    await expect(
-      contractee.Manager.depositFundsForNextCycle(agreementID)
-    ).to.emit(Manager, 'FundsDeposited');
 
     await expect(
       contractee.Manager.depositFundsForNextCycle(agreementID)

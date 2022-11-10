@@ -33,7 +33,7 @@ describe('Manager - split funds', async function () {
     agreementID = agreementIDTemp; // agreementIDTemp == agreementID
   });
 
-  it.only('Splitting the funds successfully should increase the balances of the parties by the correct percentages', async function () {
+  it('Splitting the funds successfully should increase the balances of the parties by the correct percentages', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
       contractee.Manager,
       'AgreementActivated'
