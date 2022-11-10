@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity >=0.8.0 <=0.8.13;
+
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+
+import "../extensions/YearnFinanceWrapper.sol";
+
+library Types {
+  
+  struct Agreement {
+	uint128 maturityDate;
+	uint128 paymentCycleDuration;
+    uint128 paymentCycleAmount;
+    uint128 challangeDuration;
+	address underlayingToken;
+    address contractor;
+    address contractee;
+    bool active;
+    bool closed;
+  }
+  
+}
