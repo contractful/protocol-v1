@@ -2,6 +2,7 @@ import {BigNumber} from 'ethers';
 import {deployments, ethers} from 'hardhat';
 import {Manager} from '../../typechain';
 import {setupFixture} from '../utils';
+import {ONE_HOUR} from '../utils/constants';
 import {User} from '../utils/types';
 import {expect} from './helpers/chai-setup';
 import {setupTestContracts} from './utils';
@@ -70,7 +71,8 @@ describe('Manager - migrateFunds', async function () {
 
     // fast forward to the migration period
     await ethers.provider.send('evm_increaseTime', [
-      agreementParams.paymentCycleDuration.toNumber() * 2, // 2 cycles
+      // One day because that begging date is one day in the future
+      ONE_HOUR * 24 + agreementParams.paymentCycleDuration.toNumber() * 2, // 2 cycles
     ]);
     await ethers.provider.send('evm_mine', []);
 

@@ -7,7 +7,6 @@ library Types {
   struct AgreementParameters {
     uint256 AGREEMENT_ID;
     uint128 BEGINNING_DATE;
-    uint128 ACCEPTANCE_DEADLINE;
     uint128 MATURITY_DATE;
     uint128 PAYMENT_CYCLE_DURATION;
     uint128 PAYMENT_CYCLE_AMOUNT;
