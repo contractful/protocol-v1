@@ -15,7 +15,6 @@ library Errors {
   error MG_INVALID_MIGRATION_PERIOD(); // "The migration period is not valid"
   error MG_AMOUNT_TOO_HIGH(); // "The amount is too high"
   error MG_FUNDS_ALREADY_SECURED(); // "The funds are already secured"
-  error MG_ACCEPTANCE_PERIOD_EXPIRED(); // "The acceptance period has expired"
   error MG_INVALID_PERCENTAGES(); // "The percentages are not valid. For the moment they must sum up to 100"
   error MG_AGREEMENT_ALREADY_CHALLENGED(); // "The agreement is already challenged"
 }
