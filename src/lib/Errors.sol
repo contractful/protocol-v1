@@ -17,4 +17,5 @@ library Errors {
   error MG_FUNDS_ALREADY_SECURED(); // "The funds are already secured"
   error MG_INVALID_PERCENTAGES(); // "The percentages are not valid. For the moment they must sum up to 100"
   error MG_AGREEMENT_ALREADY_CHALLENGED(); // "The agreement is already challenged"
+  error MG_PAST_BEGINNING_DATE(); // "The date is in the past"
 }

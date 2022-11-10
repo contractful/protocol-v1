@@ -63,7 +63,6 @@ interface IManager {
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
    * @return beginningDate The beginning date of the agreement
-   * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
    * @return maturityDate The date when the agreement expires
    * @return paymentCycleDuration The duration of a payment cycle
    * @return paymentCycleAmount The amount of tokens to be released per payment cycle
@@ -80,7 +79,6 @@ interface IManager {
     view
     returns (
       uint128 beginningDate,
-      uint128 acceptanceDeadline,
       uint128 maturityDate,
       uint128 paymentCycleDuration,
       uint128 paymentCycleAmount,
@@ -114,7 +112,6 @@ interface IManager {
 
   struct AgreementCreationParams {
     uint128 beginningDate;
-    uint128 acceptanceDeadline;
     uint128 maturityDate;
     uint128 paymentCycleDuration;
     uint128 paymentCycleAmount;
