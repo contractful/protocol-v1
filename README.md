@@ -4,15 +4,23 @@ TODO badges
 
 The `protocol` for trustless and decentralized contracting solution.
 
-✨ Contract beta: [https://mumbai.polygonscan.com/TODO].
+✨ Smart contract beta: [https://mumbai.polygonscan.com/TODO].
+
+*Quick start:* If you want to go ahead and put up a Hiring Agreement, please find a demo and setup instructions in the (contractful frontend project)[https://github.com/contractful/frontend-v1].
 
 ## TL;DR
 
 
 
-The contractful protocol can be interfaced using its frontend. If you want to use or learn more about the frontend, please visit [https://github.com/contractful/frontend-v1].
 
-## The contractful protocol
+## User case of the contractful protocol
+
+### For clients of a Hiring Agreement
+
+
+### For freelancers or service providers working on the Hiring Agreement
+
+
 
 
 
