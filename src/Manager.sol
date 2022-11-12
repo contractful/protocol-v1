@@ -30,16 +30,16 @@ contract Manager is IManager, Validator {
   // agreement ID to agreement
   mapping(uint256 => Types.Agreement) public agreements;
 
-  modifier whenActive(Types.Agreement storage agreement) {
-    if (!agreement.state.active) {
-      revert Errors.MG_AGREEMENT_INACTIVE();
+  modifier whenPending(Types.Agreement storage agreement) {
+    if (agreement.state.closed || agreement.state.active) {
+      revert Errors.MG_AGREEMENT_NOT_PENDING();
     }
     _;
   }
 
-  modifier whenPending(Types.Agreement storage agreement) {
-    if (agreement.state.closed || agreement.state.active) {
-      revert Errors.MG_AGREEMENT_NOT_PENDING();
+  modifier whenOngoing(Types.Agreement storage agreement) {
+    if (!agreement.state.active || agreement.state.closed || agreement.state.challenged) {
+      revert Errors.MG_NOT_ONGOING();
     }
     _;
   }
@@ -100,11 +100,11 @@ contract Manager is IManager, Validator {
 
     // Secure the funds for the first cycle
     SafeERC20.safeTransferFrom(IERC20(params.underlayingToken), msg.sender, address(this), params.paymentCycleAmount);
+    agreements[agreementNonce].state.escrowedFunds = params.paymentCycleAmount;
 
     agreements[agreementNonce].parameters = Types.AgreementParameters({
       AGREEMENT_ID: agreementNonce,
       BEGINNING_DATE: params.beginningDate,
-      ACCEPTANCE_DEADLINE: params.acceptanceDeadline,
       MATURITY_DATE: params.maturityDate,
       PAYMENT_CYCLE_DURATION: params.paymentCycleDuration,
       PAYMENT_CYCLE_AMOUNT: params.paymentCycleAmount,
@@ -135,8 +135,8 @@ contract Manager is IManager, Validator {
       revert Errors.MG_UNAUTHORIZED();
     }
 
-    if (block.timestamp > agreement.parameters.ACCEPTANCE_DEADLINE) {
-      revert Errors.MG_ACCEPTANCE_PERIOD_EXPIRED();
+    if (block.timestamp > agreement.parameters.BEGINNING_DATE) {
+      revert Errors.MG_PAST_BEGINNING_DATE();
     }
 
     agreement.state.active = true;
@@ -156,7 +156,7 @@ contract Manager is IManager, Validator {
   function migrateFunds(uint256 agreementID)
     external
     whenNotPaused
-    whenActive(agreements[agreementID])
+    whenOngoing(agreements[agreementID])
     onlyAuthorized(agreements[agreementID])
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -192,6 +192,7 @@ contract Manager is IManager, Validator {
       revert Errors.MG_INVALID_MIGRATION_PERIOD();
     }
 
+    agreement.state.escrowedFunds -= agreement.parameters.PAYMENT_CYCLE_AMOUNT;
     uint128 normalizedPaymentAmount = (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) / 100;
     accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
 
@@ -207,7 +208,7 @@ contract Manager is IManager, Validator {
   function depositFundsForNextCycle(uint256 agreementID)
     external
     whenNotPaused
-    whenActive(agreements[agreementID])
+    whenOngoing(agreements[agreementID])
     onlyAuthorized(agreements[agreementID])
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -226,13 +227,115 @@ contract Manager is IManager, Validator {
     emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
   }
 
+  /**
+   * @notice Closes an agreement and releases the escrowed funds accordingly to the agreement state
+   * @param agreementID The ID of the agreement
+   * @dev only callable by the contractee
+   */
+  function cancelAgreement(uint256 agreementID) external whenNotPaused {
+    Types.Agreement storage agreement = agreements[agreementID];
+    if (agreement.parameters.CONTRACTEE != msg.sender) {
+      revert Errors.MG_UNAUTHORIZED();
+    }
+
+    agreement.state.closed = true;
+    if (!agreement.state.active) {
+      IERC20(agreement.parameters.UNDERLAYING_TOKEN).transfer(
+        agreement.parameters.CONTRACTEE,
+        agreement.state.escrowedFunds
+      );
+    } else {
+      uint128 agreementDuration = agreement.parameters.MATURITY_DATE - agreement.parameters.BEGINNING_DATE;
+      uint128 migrations = agreementDuration / agreement.parameters.PAYMENT_CYCLE_DURATION;
+      bool reminder = agreementDuration % agreement.parameters.PAYMENT_CYCLE_DURATION != 0;
+      uint128 paymentForSecond = agreement.parameters.PAYMENT_CYCLE_AMOUNT /
+        agreement.parameters.PAYMENT_CYCLE_DURATION;
+      for (uint128 i = 0; i < migrations; i++) {
+        uint128 migrationStartPeriod = agreement.parameters.BEGINNING_DATE +
+          (agreement.parameters.PAYMENT_CYCLE_DURATION * (i + 1));
+        if (
+          block.timestamp >= migrationStartPeriod &&
+          block.timestamp <= migrationStartPeriod + agreement.parameters.PAYMENT_CYCLE_DURATION
+        ) {
+          IERC20(agreement.parameters.UNDERLAYING_TOKEN).transfer(
+            agreement.parameters.CONTRACTOR,
+            paymentForSecond * (block.timestamp - migrationStartPeriod) + agreement.parameters.PENALIZATION_AMOUNT
+          );
+          return;
+        }
+      }
+      if (reminder) {
+        if (
+          block.timestamp >=
+          agreement.parameters.BEGINNING_DATE + (agreement.parameters.PAYMENT_CYCLE_DURATION * (migrations)) &&
+          block.timestamp <= agreement.parameters.MATURITY_DATE
+        ) {
+          IERC20(agreement.parameters.UNDERLAYING_TOKEN).transfer(
+            agreement.parameters.CONTRACTOR,
+            paymentForSecond *
+              (agreement.parameters.MATURITY_DATE - block.timestamp) +
+              agreement.parameters.PENALIZATION_AMOUNT
+          );
+          return;
+        }
+      }
+    }
+
+    emit AgreementCancelled(agreementID);
+  }
+
+  /**
+   * @notice Sets the agreement state to challenged and emmits an event that will be captured by the Contractful DAO(
+   * currently a multisig)
+   * @param agreementID The ID of the agreement
+   */
+  function challengeAgreement(uint256 agreementID) external whenNotPaused whenOngoing(agreements[agreementID]) {
+    Types.Agreement storage agreement = agreements[agreementID];
+
+    agreement.state.challenged = true;
+
+    emit AgreementChallenged(agreementID);
+  }
+
+  /**
+   * @notice Releases the escrowed funds accordingly to the percentages passed as parameters
+   * @notice For the moment the function is only callable by governance wich is a multisig wallet. However in the future
+   * it will only be callable by the Contractful DAO
+   * @param agreementID The ID of the agreement
+   * @param contractorPercentage The percentage of the escrowed funds to be released to the contractor
+   * @param contracteePercentage The percentage of the escrowed funds to be released to the contractee
+   * @dev Only integers can be passed as pecentages. The function does't calculate for decimal points
+   */
+  function splitFunds(
+    uint256 agreementID,
+    uint128 contractorPercentage,
+    uint128 contracteePercentage
+  ) external whenNotPaused onlyRole(Roles.GOVERNANCE_ROLE) {
+    Types.Agreement storage agreement = agreements[agreementID];
+
+    assert(agreement.state.escrowedFunds != 0);
+
+    agreement.state.closed = true;
+
+    if (contractorPercentage + contracteePercentage != 100) {
+      revert Errors.MG_INVALID_PERCENTAGES();
+    }
+
+    uint128 contractorAmount = (agreement.state.escrowedFunds * contractorPercentage) / 100;
+    uint128 contracteeAmount = (agreement.state.escrowedFunds * contracteePercentage) / 100;
+
+    IERC20(agreement.parameters.UNDERLAYING_TOKEN).transfer(agreement.parameters.CONTRACTOR, contractorAmount);
+    IERC20(agreement.parameters.UNDERLAYING_TOKEN).transfer(agreement.parameters.CONTRACTEE, contracteeAmount);
+
+    emit FundsSplitted(agreementID, contractorAmount, contracteeAmount);
+  }
+
   // View Methods
 
   /**
    * @notice Returns the parameters of an agreement
    * @param agreementID The ID of the agreement
    * @return beginningDate The beginning date of the agreement
-   * @return acceptanceDeadline The timestamp the contractor can no longer accept the agreement
    * @return maturityDate The date when the agreement expires
    * @return paymentCycleDuration The duration of a payment cycle
    * @return paymentCycleAmount The amount of tokens to be released per payment cycle
@@ -249,7 +352,6 @@ contract Manager is IManager, Validator {
     view
     returns (
       uint128 beginningDate,
-      uint128 acceptanceDeadline,
       uint128 maturityDate,
       uint128 paymentCycleDuration,
       uint128 paymentCycleAmount,
@@ -264,7 +366,6 @@ contract Manager is IManager, Validator {
     Types.Agreement storage agreement = agreements[agreementID];
     return (
       agreement.parameters.BEGINNING_DATE,
-      agreement.parameters.ACCEPTANCE_DEADLINE,
       agreement.parameters.MATURITY_DATE,
       agreement.parameters.PAYMENT_CYCLE_DURATION,
       agreement.parameters.PAYMENT_CYCLE_AMOUNT,
@@ -281,20 +382,22 @@ contract Manager is IManager, Validator {
    * @notice Returns the state of an agreement
    * @param agreementID The ID of the agreement
    * @param escrowedFunds The amount of funds escrowed in the agreement
-   * @param active Whether the agreement is active
    * @param closed Whether the agreement is closed
+   * @param challenged Whether the agreement is challenged
+   * @param active Whether the agreement is active
    */
   function getAgreementState(uint256 agreementID)
     external
     view
     returns (
       uint128 escrowedFunds,
-      bool active,
-      bool closed
+      bool closed,
+      bool challenged,
+      bool active
     )
   {
     Types.Agreement storage agreement = agreements[agreementID];
-    return (agreement.state.escrowedFunds, agreement.state.active, agreement.state.closed);
+    return (agreement.state.escrowedFunds, agreement.state.closed, agreement.state.challenged, agreement.state.active);
   }
 
   /**
