@@ -201,7 +201,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
   function migrateFunds(uint256 agreementID)
     internal
     whenNotPaused
-    whenActive(agreements[agreementID])
     onlyAuthorized(agreements[agreementID])
   {
     Types.Agreement storage agreement = agreements[agreementID];
