@@ -151,7 +151,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     view
     whenNotPaused
     whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
     returns (bool)
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -203,7 +202,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     public
     whenNotPaused
     whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
   {
     if (checkFundsMigration(agreementID)) {
       Types.Agreement storage agreement = agreements[agreementID];
@@ -226,7 +224,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     public
     whenNotPaused
     whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
   {
     Types.Agreement storage agreement = agreements[agreementID];
     if (agreement.state.escrowedFunds != 0) {
@@ -267,6 +264,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
   function performUpkeep(bytes calldata performData)
     external
     override
+    whenNotPaused
   {
     uint256[] memory agreementsToMigrateFunds = abi.decode(performData, (uint256[]));
 

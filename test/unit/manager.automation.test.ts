@@ -58,6 +58,31 @@ describe('Manager - chainlink automation', async function () {
             await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
         });
 
+        it("For external account like chainlink - returns upkeepNeeded & performData correctly for activated agreement in migration period", async () => {
+            await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
+                Manager,
+                'AgreementActivated'
+              );
+            
+            const agreementParams = await user1.Manager.getAgreementParameters(agreementID);
+
+            // fast forward to the migration period
+            await ethers.provider.send('evm_increaseTime', [
+            // One day because that begging date is one day in the future
+            ONE_HOUR * 24 + agreementParams.paymentCycleDuration.toNumber() * 2, // 2 cycles
+            ]);
+            await ethers.provider.send('evm_mine', []);
+
+            
+            const checkData = ethers.utils.keccak256(
+                ethers.utils.toUtf8Bytes("")
+            );
+            const { upkeepNeeded, performData } = await user1.Manager.callStatic.checkUpkeep(checkData);
+
+            assert(upkeepNeeded);
+            assert(performData);
+        });
+
         it("Returns upkeepNeeded & performData correctly for activated agreement in migration period", async () => {
             await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
                 Manager,
@@ -133,6 +158,48 @@ describe('Manager - chainlink automation', async function () {
             if (upkeepNeeded) {
 
                 const txResponse = await Manager.performUpkeep(
+                    performData
+                );
+
+                const txReceipt = await txResponse.wait(1);
+                assert(txReceipt);
+
+                if (txReceipt.events){
+                    const agreementIDnew = txReceipt.events[0].args!.agreement;
+                    const paymentCycleAmountnew = txReceipt.events[0].args!.amount;
+                    assert (agreementIDnew, agreementID.toString());
+                    assert (paymentCycleAmountnew, PAYMENT_CYCLE_AMOUNT.toString());
+                }
+            }
+        });
+
+        it("For external user like chainlink - Triggers auto payments for activated agreement in migration period should be successful", async () => {
+
+            await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
+                Manager,
+                'AgreementActivated'
+              );
+            
+            const agreementParams = await user1.Manager.getAgreementParameters(agreementID);
+
+            // fast forward to the migration period
+            await ethers.provider.send('evm_increaseTime', [
+            // One day because that begging date is one day in the future
+            ONE_HOUR * 24 + agreementParams.paymentCycleDuration.toNumber() * 2, // 2 cycles
+            ]);
+            await ethers.provider.send('evm_mine', []);
+
+            const checkData = ethers.utils.keccak256(
+                ethers.utils.toUtf8Bytes("")
+            );
+            const { upkeepNeeded, performData } = await user1.Manager.callStatic.checkUpkeep(checkData);
+
+            assert(upkeepNeeded);
+            assert(performData);
+
+            if (upkeepNeeded) {
+
+                const txResponse = await user1.Manager.performUpkeep(
                     performData
                 );
 

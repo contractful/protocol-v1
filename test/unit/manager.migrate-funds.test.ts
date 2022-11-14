@@ -39,16 +39,16 @@ describe('Manager - migrateFunds', async function () {
     ).to.be.revertedWith('MG_NOT_ONGOING');
   });
 
-  it('Migrating funds where the msg.sender is not the contractee, keeper or governance should revert', async function () {
-    await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
-      Manager,
-      'AgreementActivated'
-    );
+  // it('Migrating funds where the msg.sender is not the contractee, keeper or governance should revert', async function () {
+  //   await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
+  //     Manager,
+  //     'AgreementActivated'
+  //   );
 
-    await expect(user1.Manager.migrateFunds(agreementID)).to.be.revertedWith(
-      'MG_UNAUTHORIZED'
-    );
-  });
+  //   await expect(user1.Manager.migrateFunds(agreementID)).to.be.revertedWith(
+  //     'MG_UNAUTHORIZED'
+  //   );
+  // });
 
   it('Migrating funds when it is not the migration period should revert', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
