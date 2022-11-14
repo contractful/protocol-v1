@@ -9,6 +9,8 @@ import "./lib/Roles.sol";
 import "./lib/Errors.sol";
 import "./Validator.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title Manager
  * @author Contractful Labs
@@ -198,16 +200,14 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
    */
 
   //TODO: should this be kept internal since we have keepers?
-  function migrateFunds(uint256 agreementID)
-    public
-    whenNotPaused
-    whenOngoing(agreements[agreementID])
-  {
+  function migrateFunds(uint256 agreementID) public whenNotPaused whenOngoing(agreements[agreementID]) {
     if (checkFundsMigration(agreementID)) {
       Types.Agreement storage agreement = agreements[agreementID];
 
       agreement.state.escrowedFunds -= agreement.parameters.PAYMENT_CYCLE_AMOUNT;
-      uint128 normalizedPaymentAmount = (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) / 100;
+      uint128 normalizedPaymentAmount = agreement.parameters.PAYMENT_CYCLE_AMOUNT +
+        (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) /
+        100;
       accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
 
       SafeERC20.safeTransfer(
@@ -220,11 +220,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     }
   }
 
-  function depositFundsForNextCycle(uint256 agreementID)
-    public
-    whenNotPaused
-    whenOngoing(agreements[agreementID])
-  {
+  function depositFundsForNextCycle(uint256 agreementID) public whenNotPaused whenOngoing(agreements[agreementID]) {
     Types.Agreement storage agreement = agreements[agreementID];
     if (agreement.state.escrowedFunds != 0) {
       revert Errors.MG_FUNDS_ALREADY_SECURED();
@@ -241,16 +237,11 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
   }
 
-  function checkUpkeep(bytes calldata)
-    external
-    view
-    override
-    returns (bool upkeepNeeded, bytes memory performData)
-  {
+  function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData) {
     uint256[] memory agreementsToMigrateFunds = new uint256[](agreementIDs.length);
     uint256 count = 0;
 
-    for (uint256 idx = 0; idx < agreementIDs.length; idx++){
+    for (uint256 idx = 0; idx < agreementIDs.length; idx++) {
       if (checkFundsMigration(agreementIDs[idx])) {
         upkeepNeeded = true;
         agreementsToMigrateFunds[count] = agreementIDs[idx];
@@ -261,11 +252,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     return (upkeepNeeded, performData);
   }
 
-  function performUpkeep(bytes calldata performData)
-    external
-    override
-    whenNotPaused
-  {
+  function performUpkeep(bytes calldata performData) external override whenNotPaused {
     uint256[] memory agreementsToMigrateFunds = abi.decode(performData, (uint256[]));
 
     for (uint256 idx = 0; idx < agreementsToMigrateFunds.length; idx++) {
@@ -273,7 +260,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
       depositFundsForNextCycle(agreementsToMigrateFunds[idx]);
     }
   }
-  
+
   /**
    * @notice Closes an agreement and releases the escrowed funds accordingly to the agreement state
    * @param agreementID The ID of the agreement
