@@ -38,16 +38,16 @@ describe('Manager - deposit', async function () {
     ).to.be.revertedWith('MG_NOT_ONGOING');
   });
 
-  it('Depositing funds as an unauthorized user should revert', async function () {
-    await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
-      Manager,
-      'AgreementActivated'
-    );
+  // it('Depositing funds as an unauthorized user should revert', async function () {
+  //   await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
+  //     Manager,
+  //     'AgreementActivated'
+  //   );
 
-    await expect(
-      user1.Manager.depositFundsForNextCycle(agreementID)
-    ).to.be.revertedWith('MG_UNAUTHORIZED');
-  });
+  //   await expect(
+  //     user1.Manager.depositFundsForNextCycle(agreementID)
+  //   ).to.be.revertedWith('MG_UNAUTHORIZED');
+  // });
 
   it('Depositing funds twice for the same cycle should revert', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(

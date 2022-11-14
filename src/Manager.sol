@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 import "./lib/IManager.sol";
 import "./lib/Types.sol";
@@ -16,7 +17,7 @@ import "./Validator.sol";
 
 pragma solidity ^0.8.0;
 
-contract Manager is IManager, Validator {
+contract Manager is IManager, Validator, AutomationCompatibleInterface {
   // General values. Only modifiable by Roles.GOVERNANCE
   uint128 public penalizationAmount;
   uint128 public challengeDuration;
@@ -25,6 +26,8 @@ contract Manager is IManager, Validator {
 
   // These variables will be removed soon once the proxy implementation is updated.
   uint256 public agreementNonce = 1;
+  uint256[] private agreementIDs;
+
   mapping(address => uint256[]) public userAgreements;
 
   // agreement ID to agreement
@@ -118,6 +121,7 @@ contract Manager is IManager, Validator {
 
     userAgreements[msg.sender].push(agreementNonce);
     userAgreements[params.contractor].push(agreementNonce);
+    agreementIDs.push(agreementNonce);
 
     emit AgreementCreated(agreementNonce, params.contractor, msg.sender);
     agreementNonce++;
@@ -135,10 +139,6 @@ contract Manager is IManager, Validator {
       revert Errors.MG_UNAUTHORIZED();
     }
 
-    if (block.timestamp > agreement.parameters.BEGINNING_DATE) {
-      revert Errors.MG_PAST_BEGINNING_DATE();
-    }
-
     agreement.state.active = true;
 
     userAgreements[msg.sender].push(agreementNonce);
@@ -146,18 +146,12 @@ contract Manager is IManager, Validator {
     emit AgreementActivated(agreementID);
   }
 
-  /**
-   * @notice Releases the funds for the current payment cycle
-   * @param agreementID The ID of the agreement to release the funds for
-   * @dev Only the keeper or contractee can call this function
-   * @dev A for loop is used to calculate the migration periods instead of storing them on chain to reduce gas costs
-   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
-   */
-  function migrateFunds(uint256 agreementID)
-    external
+  function checkFundsMigration(uint256 agreementID)
+    public
+    view
     whenNotPaused
     whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
+    returns (bool)
   {
     Types.Agreement storage agreement = agreements[agreementID];
 
@@ -192,24 +186,44 @@ contract Manager is IManager, Validator {
       revert Errors.MG_INVALID_MIGRATION_PERIOD();
     }
 
-    agreement.state.escrowedFunds -= agreement.parameters.PAYMENT_CYCLE_AMOUNT;
-    uint128 normalizedPaymentAmount = (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) / 100;
-    accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
+    return validMigrationPeriod;
+  }
 
-    SafeERC20.safeTransfer(
-      IERC20(agreement.parameters.UNDERLAYING_TOKEN),
-      agreement.parameters.CONTRACTOR,
-      normalizedPaymentAmount
-    );
+  /**
+   * @notice Releases the funds for the current payment cycle
+   * @param agreementID The ID of the agreement to release the funds for
+   * @dev Only the keeper or contractee can call this function
+   * @dev A for loop is used to calculate the migration periods instead of storing them on chain to reduce gas costs
+   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
+   */
 
-    emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+  //TODO: should this be kept internal since we have keepers?
+  function migrateFunds(uint256 agreementID)
+    public
+    whenNotPaused
+    whenOngoing(agreements[agreementID])
+  {
+    if (checkFundsMigration(agreementID)) {
+      Types.Agreement storage agreement = agreements[agreementID];
+
+      agreement.state.escrowedFunds -= agreement.parameters.PAYMENT_CYCLE_AMOUNT;
+      uint128 normalizedPaymentAmount = (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) / 100;
+      accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
+
+      SafeERC20.safeTransfer(
+        IERC20(agreement.parameters.UNDERLAYING_TOKEN),
+        agreement.parameters.CONTRACTOR,
+        normalizedPaymentAmount
+      );
+
+      emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+    }
   }
 
   function depositFundsForNextCycle(uint256 agreementID)
-    external
+    public
     whenNotPaused
     whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
   {
     Types.Agreement storage agreement = agreements[agreementID];
     if (agreement.state.escrowedFunds != 0) {
@@ -227,6 +241,39 @@ contract Manager is IManager, Validator {
     emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
   }
 
+  function checkUpkeep(bytes calldata)
+    external
+    view
+    override
+    returns (bool upkeepNeeded, bytes memory performData)
+  {
+    uint256[] memory agreementsToMigrateFunds = new uint256[](agreementIDs.length);
+    uint256 count = 0;
+
+    for (uint256 idx = 0; idx < agreementIDs.length; idx++){
+      if (checkFundsMigration(agreementIDs[idx])) {
+        upkeepNeeded = true;
+        agreementsToMigrateFunds[count] = agreementIDs[idx];
+        count++;
+      }
+    }
+    performData = abi.encode(agreementsToMigrateFunds);
+    return (upkeepNeeded, performData);
+  }
+
+  function performUpkeep(bytes calldata performData)
+    external
+    override
+    whenNotPaused
+  {
+    uint256[] memory agreementsToMigrateFunds = abi.decode(performData, (uint256[]));
+
+    for (uint256 idx = 0; idx < agreementsToMigrateFunds.length; idx++) {
+      migrateFunds(agreementsToMigrateFunds[idx]);
+      depositFundsForNextCycle(agreementsToMigrateFunds[idx]);
+    }
+  }
+  
   /**
    * @notice Closes an agreement and releases the escrowed funds accordingly to the agreement state
    * @param agreementID The ID of the agreement
