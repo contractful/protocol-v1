@@ -1,10 +1,12 @@
 # contractful protocol
 
-[Polygon Mumbai testnet | ✅ Deployed](https://mumbai.polygonscan.com/address/0xE4930EDeAd758036Bd830983A26340ac7F366869)
+\[[Polygon Mumbai testnet | ✅ Deployed](https://mumbai.polygonscan.com/address/0xE4930EDeAd758036Bd830983A26340ac7F366869)\]
 
 🙌️  News: **[For early MVP access, click here to participate in our survey from Nov to Dec 2022](https://forms.gle/E3xPJwu6wBbnvB7t6)**.
 
 The protocol that realizes peer-2-peer, safe and secure Hiring Agreements for everyone to use.
+
+You will also find [more details on the devpost page on the contractful project](https://devpost.com/software/contractful-hiring-agreements).
 
 ## Quick start
 
