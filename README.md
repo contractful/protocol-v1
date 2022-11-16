@@ -1,10 +1,10 @@
 # contractful protocol
 
-[Polygon Mumbai testnet | ✅ Deployed](https://mumbai.polygonscan.com/address/0x271ecC5C07A80891ec552156675Ecc4260B3B0dE)
+[Polygon Mumbai testnet | ✅ Deployed](https://mumbai.polygonscan.com/address/0xE4930EDeAd758036Bd830983A26340ac7F366869)
 
-🙌️  News: **[For early MVP access, click here to participate in our survey from Nov to Dec 2022](https://forms.gle/E3xPJwu6wBbnvB7t6).**
+🙌️  News: **[For early MVP access, click here to participate in our survey from Nov to Dec 2022](https://forms.gle/E3xPJwu6wBbnvB7t6)**.
 
-The `protocol` for trustless and decentralized contracting solution.
+The protocol that realizes peer-2-peer, safe and secure Hiring Agreements for everyone to use.
 
 ## Quick start
 
@@ -12,8 +12,11 @@ If you want to go ahead and put up a Hiring Agreement, please find [the demo lin
 
 ## TL;DR
 
+The contractful protocol lets everyone create peer-2-peer, safe and secure Hiring Agreements. Freelancers, service providers and also permanent employees can use contractful together with their clients or employers to manifest their collaboration terms on-chain.
 
+The Agreement is build on top of an underlying agile collaboration process. It assumes contractor and contractee to exchange information on a regular basis ("Conversation over Documantation"). The budgets is escrowed by the Smart Contract along a sprint cycle (e.g. 2 weeks). In case of a successfull review, the budget is transferred to the contractee. In case of a dispute, the Agreement ensures a fair way of splitting the funds.
 
+This enables DAOs, cryoto companies and startups to seemlessly hire staff for their projects on a global, borderless scale.
 
 ## User case of the contractful protocol
 
@@ -22,26 +25,31 @@ If you want to go ahead and put up a Hiring Agreement, please find [the demo lin
 👉 For freelancers and service providers in the crypto industry, the contractful Hiring Agreement lets you:
 
 * Getting hired for an agile project by your client in a way that is fair, safe and transparent.
-* In this process the underlying smart contract will escrow the budget for a 2 weeks sprint cycle. Payment on review is guarded by the Polygon blockchain and Chainlink Actions.
+* In this process the underlying smart contract will escrow the budget for a 2 weeks sprint cycle. Payment on review is guarded by the Polygon blockchain and Chainlink Automation.
 
 ### For freelancers or service providers working on the Hiring Agreement
 
 👉 Benefits for clients:
 
-* Automated payments: Easy and secure on-chain automated payment processing.
-* Standardized and blockchain governed Hiring Agreement safes hours of paper work.
+* Automated payments: Easy and secure on-chain payment processing.
+* Standardized and blockchain governed Hiring Agreements safe hours of paper work.
+* Access to a global hiring market.
 * Full budget control: The Agreement ensures clean budget planning that matches your product development roadmap.
 
 ### Process of the Hiring Agreement
 
-TODO Diagram
+The following diagram describes the process of the protocol in-depth:
 
+![contractful Hiring Agreement process beta](./documentation/figures/contractful-Hiring-Agreement-process_beta.jpg)
 
-If you want to learn more about the inspiration, idea behind contractful, experiences with the implementation of the solution, and the future potential, [please visit the project's devpost page](https://devpost.com/TODO).
+If you want to learn more about the inspiration, idea behind contractful, experiences with the implementation of the solution, and the future potential, [please visit the project's devpost page](https://devpost.com/software/contractful-hiring-agreements).
 
 ## The protocol architecture
 
-
+* The protocol is provided on the **Polygon blockchain** as a Smart Contract.
+* Automated migration of funds is realized through **Chainlink Automation**.
+* Contract details are **stored on IPFS** and linked to the protocol via their `cid`.
+* The protocol is accessible for users through the [contractful frontend application](https://github.com/contractful/frontend-v1) (official demo: <https://contractful.vercel.app/>).
 
 ### Why Polygon?
 
@@ -49,4 +57,8 @@ The Polygon blockchain ecosystem is very developer friendly. The chain itself is
 
 ### Why Chainlink Automation?
 
-TBD
+Once the budget for a payment period (e.g. a 2 weeks sprint) are delegated to the Hiring Agreement, and the freelancer or service prodiders starts working on the contract, it is critical to the solution that the payment is guaranteed to be released according to the pre-agreed terms. Chainlink Automation ensures that this will happen.
+
+### Why IPFS?
+
+contractful Hiring Agreement are decentralized in every aspect. But blockchains are not suitable to host big payloads of data (dure to the high costs of blockspace). The detailed description of a Hiring Agreement can have an arbitrary size, and might also get comparably long in particular. Therefore the encrypted description is stored on IPFS ([see the contractful frontend application](https://github.com/contractful/frontend-v1)).
