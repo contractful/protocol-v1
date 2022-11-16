@@ -27,14 +27,14 @@ This enables DAOs, cryoto companies and startups to seemlessly hire staff for th
 👉 For freelancers and service providers in the crypto industry, the contractful Hiring Agreement lets you:
 
 * Getting hired for an agile project by your client in a way that is fair, safe and transparent.
-* In this process the underlying smart contract will escrow the budget for a 2 weeks sprint cycle. Payment on review is guarded by the Polygon blockchain and Chainlink Automation.
+* In this process the underlying Smart Contract will escrow the budget for a 2 weeks sprint cycle. Payments are automated and dispensed on sprint review of each sprint and are guarded by the Polygon blockchain and Chainlink Automation.
 
 ### For freelancers or service providers working on the Hiring Agreement
 
 👉 Benefits for clients:
 
 * Automated payments: Easy and secure on-chain payment processing.
-* Standardized and blockchain governed Hiring Agreements safe hours of paper work.
+* Standardized and blockchain governed Hiring Agreements save hours of paper work.
 * Access to a global hiring market.
 * Full budget control: The Agreement ensures clean budget planning that matches your product development roadmap.
 
