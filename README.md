@@ -63,4 +63,4 @@ Once the budget for a payment period (e.g. a 2 weeks sprint) are delegated to th
 
 ### Why IPFS?
 
-contractful Hiring Agreement are decentralized in every aspect. But blockchains are not suitable to host big payloads of data (dure to the high costs of blockspace). The detailed description of a Hiring Agreement can have an arbitrary size, and might also get comparably long in particular. Therefore the encrypted description is stored on IPFS ([see the contractful frontend application](https://github.com/contractful/frontend-v1)).
+contractful Hiring Agreements are decentralized in every aspect. But blockchains are not suitable to host big payloads of data (due to the high costs of blockspace). The detailed description of a Hiring Agreement can have an arbitrary size, and might also get comparably long. Therefore data of the description is stored on IPFS. To secure the description, it is encrypted using AES ([see the contractful frontend application](https://github.com/contractful/frontend-v1)).
