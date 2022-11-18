@@ -41,15 +41,6 @@ describe('Manager - activateAgreement', async function () {
     ).to.be.revertedWith('MG_AGREEMENT_NOT_PENDING');
   });
 
-  it('Activating an agreement after the beginning date should revert', async function () {
-    await ethers.provider.send('evm_increaseTime', [ONE_HOUR * 25]);
-    await ethers.provider.send('evm_mine', []);
-
-    await expect(
-      contractor.Manager.activateAgreement(agreementID)
-    ).to.be.revertedWith('MG_PAST_BEGINNING_DATE');
-  });
-
   it('Activating an agreement for which msg.sender is not the contractor should revert', async function () {
     await expect(
       contractee.Manager.activateAgreement(agreementID)

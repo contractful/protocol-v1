@@ -16,6 +16,7 @@ library Types {
     address CONTRACTOR;
     address CONTRACTEE;
     string DESCRIPTION_URI;
+    uint128 CURRENT_MIGRATION;
   }
 
   struct AgreementState {

@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 import "./lib/IManager.sol";
 import "./lib/Types.sol";
 import "./lib/Roles.sol";
 import "./lib/Errors.sol";
 import "./Validator.sol";
+
+import "hardhat/console.sol";
 
 /**
  * @title Manager
@@ -16,7 +19,7 @@ import "./Validator.sol";
 
 pragma solidity ^0.8.0;
 
-contract Manager is IManager, Validator {
+contract Manager is IManager, Validator, AutomationCompatibleInterface {
   // General values. Only modifiable by Roles.GOVERNANCE
   uint128 public penalizationAmount;
   uint128 public challengeDuration;
@@ -25,6 +28,8 @@ contract Manager is IManager, Validator {
 
   // These variables will be removed soon once the proxy implementation is updated.
   uint256 public agreementNonce = 1;
+  uint256[] private agreementIDs;
+
   mapping(address => uint256[]) public userAgreements;
 
   // agreement ID to agreement
@@ -53,6 +58,20 @@ contract Manager is IManager, Validator {
       revert Errors.MG_UNAUTHORIZED();
     }
     _;
+  }
+
+  function isPending(Types.Agreement storage agreement) private view returns (bool){
+    if (agreement.state.closed || agreement.state.active) {
+      return false;
+    }
+    return true;
+  }
+
+  function isOngoing(Types.Agreement storage agreement) private view returns (bool){
+    if (!agreement.state.active || agreement.state.closed || agreement.state.challenged) {
+      return false;
+    }
+    return true;
   }
 
   function initialize(uint128 challengeDuration_, address governance_) public initializer {
@@ -113,11 +132,13 @@ contract Manager is IManager, Validator {
       UNDERLAYING_TOKEN: params.underlayingToken,
       CONTRACTOR: params.contractor,
       CONTRACTEE: msg.sender,
-      DESCRIPTION_URI: params.descriptionURI
+      DESCRIPTION_URI: params.descriptionURI,
+      CURRENT_MIGRATION: 0
     });
 
     userAgreements[msg.sender].push(agreementNonce);
     userAgreements[params.contractor].push(agreementNonce);
+    agreementIDs.push(agreementNonce);
 
     emit AgreementCreated(agreementNonce, params.contractor, msg.sender);
     agreementNonce++;
@@ -135,10 +156,6 @@ contract Manager is IManager, Validator {
       revert Errors.MG_UNAUTHORIZED();
     }
 
-    if (block.timestamp > agreement.parameters.BEGINNING_DATE) {
-      revert Errors.MG_PAST_BEGINNING_DATE();
-    }
-
     agreement.state.active = true;
 
     userAgreements[msg.sender].push(agreementNonce);
@@ -146,18 +163,11 @@ contract Manager is IManager, Validator {
     emit AgreementActivated(agreementID);
   }
 
-  /**
-   * @notice Releases the funds for the current payment cycle
-   * @param agreementID The ID of the agreement to release the funds for
-   * @dev Only the keeper or contractee can call this function
-   * @dev A for loop is used to calculate the migration periods instead of storing them on chain to reduce gas costs
-   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
-   */
-  function migrateFunds(uint256 agreementID)
-    external
+  function checkFundsMigration(uint256 agreementID)
+    public
+    view
     whenNotPaused
-    whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
+    returns (bool)
   {
     Types.Agreement storage agreement = agreements[agreementID];
 
@@ -165,7 +175,7 @@ contract Manager is IManager, Validator {
     uint128 migrations = agreementDuration / agreement.parameters.PAYMENT_CYCLE_DURATION;
     bool validMigrationPeriod = false;
     bool reminder = agreementDuration % agreement.parameters.PAYMENT_CYCLE_DURATION != 0;
-    for (uint128 i = 0; i < migrations; i++) {
+    for (uint128 i = agreement.parameters.CURRENT_MIGRATION; i < migrations; i++) {
       uint128 migrationPeriod = agreement.parameters.BEGINNING_DATE +
         (agreement.parameters.PAYMENT_CYCLE_DURATION * (i + 1));
       if (block.timestamp >= migrationPeriod) {
@@ -188,33 +198,46 @@ contract Manager is IManager, Validator {
       }
     }
 
-    if (!validMigrationPeriod) {
-      revert Errors.MG_INVALID_MIGRATION_PERIOD();
-    }
-
-    agreement.state.escrowedFunds -= agreement.parameters.PAYMENT_CYCLE_AMOUNT;
-    uint128 normalizedPaymentAmount = (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) / 100;
-    accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
-
-    SafeERC20.safeTransfer(
-      IERC20(agreement.parameters.UNDERLAYING_TOKEN),
-      agreement.parameters.CONTRACTOR,
-      normalizedPaymentAmount
-    );
-
-    emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+    return validMigrationPeriod;
   }
 
-  function depositFundsForNextCycle(uint256 agreementID)
-    external
-    whenNotPaused
-    whenOngoing(agreements[agreementID])
-    onlyAuthorized(agreements[agreementID])
-  {
-    Types.Agreement storage agreement = agreements[agreementID];
-    if (agreement.state.escrowedFunds != 0) {
-      revert Errors.MG_FUNDS_ALREADY_SECURED();
+  /**
+   * @notice Releases the funds for the current payment cycle
+   * @param agreementID The ID of the agreement to release the funds for
+   * @dev Only the keeper or contractee can call this function
+   * @dev A for loop is used to calculate the migration periods instead of storing them on chain to reduce gas costs
+   * @dev If there is a remainder, the last migration period will be shorter than the others and fall on the maturity date
+   */
+
+  //TODO: should this be kept internal since we have keepers?
+  function migrateFunds(uint256 agreementID) public whenNotPaused returns (bool) {
+    if (!isOngoing(agreements[agreementID])) return false;
+    if (checkFundsMigration(agreementID)) {
+      Types.Agreement storage agreement = agreements[agreementID];
+
+      agreement.state.escrowedFunds -= agreement.parameters.PAYMENT_CYCLE_AMOUNT;
+      uint128 normalizedPaymentAmount = agreement.parameters.PAYMENT_CYCLE_AMOUNT +
+        (agreement.parameters.PAYMENT_CYCLE_AMOUNT * establishmentFeeRate) /
+        100;
+      accruedEstablishmentFee += agreement.parameters.PAYMENT_CYCLE_AMOUNT - normalizedPaymentAmount;
+
+      SafeERC20.safeTransfer(
+        IERC20(agreement.parameters.UNDERLAYING_TOKEN),
+        agreement.parameters.CONTRACTOR,
+        normalizedPaymentAmount
+      );
+      agreement.parameters.CURRENT_MIGRATION += 1; // since we paid out
+
+      emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+      return true;
     }
+    return false;
+  }
+
+  function depositFundsForNextCycle(uint256 agreementID) public whenNotPaused returns (bool) {
+    if (!isOngoing(agreements[agreementID])) return false;
+    Types.Agreement storage agreement = agreements[agreementID];
+    if (agreement.state.escrowedFunds != 0) return false;
 
     agreement.state.escrowedFunds += agreement.parameters.PAYMENT_CYCLE_AMOUNT;
     SafeERC20.safeTransferFrom(
@@ -225,6 +248,32 @@ contract Manager is IManager, Validator {
     );
 
     emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+    return true;
+  }
+
+  function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData) {
+    uint256[] memory agreementsToMigrateFunds = new uint256[](agreementIDs.length);
+    uint256 count = 0;
+    upkeepNeeded = false;
+    for (uint256 idx = 0; idx < agreementIDs.length; idx++) {
+      if (!isOngoing(agreements[agreementIDs[idx]])) continue;
+      if (checkFundsMigration(agreementIDs[idx])) {
+        upkeepNeeded = true;
+        agreementsToMigrateFunds[count] = agreementIDs[idx];
+        count++;
+      }
+    }
+    performData = abi.encode(agreementsToMigrateFunds);
+    return (upkeepNeeded, performData);
+  }
+
+  function performUpkeep(bytes calldata performData) external override whenNotPaused {
+    uint256[] memory agreementsToMigrateFunds = abi.decode(performData, (uint256[]));
+
+    for (uint256 idx = 0; idx < agreementsToMigrateFunds.length; idx++) {
+      migrateFunds(agreementsToMigrateFunds[idx]);
+      depositFundsForNextCycle(agreementsToMigrateFunds[idx]);
+    }
   }
 
   /**
@@ -360,7 +409,8 @@ contract Manager is IManager, Validator {
       address underlayingToken,
       address contractor,
       address contractee,
-      string memory descriptionURI
+      string memory descriptionURI,
+      uint128 currentMigration
     )
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -374,7 +424,8 @@ contract Manager is IManager, Validator {
       agreement.parameters.UNDERLAYING_TOKEN,
       agreement.parameters.CONTRACTOR,
       agreement.parameters.CONTRACTEE,
-      agreement.parameters.DESCRIPTION_URI
+      agreement.parameters.DESCRIPTION_URI,
+      agreement.parameters.CURRENT_MIGRATION
     );
   }
 

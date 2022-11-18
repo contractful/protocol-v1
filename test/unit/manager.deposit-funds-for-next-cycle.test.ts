@@ -3,7 +3,7 @@ import {deployments} from 'hardhat';
 import {Manager} from '../../typechain';
 import {setupFixture} from '../utils';
 import {User} from '../utils/types';
-import {expect} from './helpers/chai-setup';
+import {assert, expect} from './helpers/chai-setup';
 import {setupTestContracts} from './utils';
 
 const setup = deployments.createFixture(async () => {
@@ -32,31 +32,37 @@ describe('Manager - deposit', async function () {
     user1 = testUser1;
   });
 
-  it('Depositing funds when an agreement is not active should revert', async function () {
-    await expect(
-      contractee.Manager.depositFundsForNextCycle(agreementID)
-    ).to.be.revertedWith('MG_NOT_ONGOING');
+  it('Depositing funds when an agreement is not active should return false', async function () {
+
+    const { hasDeposited } = await contractee.Manager.depositFundsForNextCycle(agreementID);
+
+    assert(!hasDeposited);
+    // await expect(
+    //   contractee.Manager.depositFundsForNextCycle(agreementID)
+    // ).to.be.revertedWith('MG_NOT_ONGOING');
   });
 
-  it('Depositing funds as an unauthorized user should revert', async function () {
+  // it('Depositing funds as an unauthorized user should revert', async function () {
+  //   await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
+  //     Manager,
+  //     'AgreementActivated'
+  //   );
+
+  //   await expect(
+  //     user1.Manager.depositFundsForNextCycle(agreementID)
+  //   ).to.be.revertedWith('MG_UNAUTHORIZED');
+  // });
+
+  it('Depositing funds twice for the same cycle should return false', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
       Manager,
       'AgreementActivated'
     );
+    const { hasDeposited } = await contractee.Manager.depositFundsForNextCycle(agreementID);
 
-    await expect(
-      user1.Manager.depositFundsForNextCycle(agreementID)
-    ).to.be.revertedWith('MG_UNAUTHORIZED');
-  });
-
-  it('Depositing funds twice for the same cycle should revert', async function () {
-    await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
-      Manager,
-      'AgreementActivated'
-    );
-
-    await expect(
-      contractee.Manager.depositFundsForNextCycle(agreementID)
-    ).to.be.revertedWith('MG_FUNDS_ALREADY_SECURED');
+    assert(!hasDeposited);
+    // await expect(
+    //   contractee.Manager.depositFundsForNextCycle(agreementID)
+    // ).to.be.revertedWith('MG_FUNDS_ALREADY_SECURED');
   });
 });

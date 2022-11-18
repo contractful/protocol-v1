@@ -87,7 +87,8 @@ interface IManager {
       address underlayingToken,
       address contractor,
       address contractee,
-      string memory descriptionURI
+      string memory descriptionURI,
+      uint128 currentMigration
     );
 
   /**
@@ -141,7 +142,8 @@ interface IManager {
    * @notice Releases the funds for the current payment cycle
    * @param agreementID The ID of the agreement to release the funds for
    */
-  function migrateFunds(uint256 agreementID) external;
+  
+  //function migrateFunds(uint256 agreementID) external;
 
   /**
    * @notice Closes an agreement and releases the escrowed funds accordingly to the agreement state
