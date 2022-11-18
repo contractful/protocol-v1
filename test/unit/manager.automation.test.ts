@@ -37,15 +37,17 @@ describe('Manager - chainlink automation', async function () {
     });
 
     describe("checkUpkeep", () => {
-        it("If agreement isn't ongoing, revert", async () => {
+        it("If agreement isn't ongoing, upkeepneeded is false", async () => {
 
             const checkData = ethers.utils.keccak256(
                 ethers.utils.toUtf8Bytes("")
             );
-            await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_NOT_ONGOING');
+            const { upkeepNeeded, performData } = await Manager.callStatic.checkUpkeep(checkData);
+            assert(!upkeepNeeded);
+            //await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_NOT_ONGOING');
         });
 
-        it("If agreement is activated but not in migration period, revert", async () => {
+        it("If agreement is activated but not in migration period, upkeepneeded is false", async () => {
 
             await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
                 Manager,
@@ -55,7 +57,9 @@ describe('Manager - chainlink automation', async function () {
             const checkData = ethers.utils.keccak256(
                 ethers.utils.toUtf8Bytes("")
             );
-            await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
+            const { upkeepNeeded, performData } = await Manager.callStatic.checkUpkeep(checkData);
+            assert(!upkeepNeeded);
+            //await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
         });
 
         it("For external account like chainlink - returns upkeepNeeded & performData correctly for activated agreement in migration period", async () => {
@@ -110,15 +114,17 @@ describe('Manager - chainlink automation', async function () {
     });
 
     describe("performUpkeep", () => {
-        it("If agreement isn't ongoing, revert", async () => {
+        it("If agreement isn't ongoing, upkeepNeeded is false", async () => {
 
             const checkData = ethers.utils.keccak256(
                 ethers.utils.toUtf8Bytes("")
             );
-            await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_NOT_ONGOING');
+            const { upkeepNeeded, performData } = await Manager.callStatic.checkUpkeep(checkData);
+            assert(!upkeepNeeded);
+            //await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_NOT_ONGOING');
         });
 
-        it("If agreement is activated but not in migration period, revert", async () => {
+        it("If agreement is activated but not in migration period, upkeepNeeded is false", async () => {
 
             await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
                 Manager,
@@ -128,7 +134,10 @@ describe('Manager - chainlink automation', async function () {
             const checkData = ethers.utils.keccak256(
                 ethers.utils.toUtf8Bytes("")
             );
-            await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
+            const { upkeepNeeded, performData } = await Manager.callStatic.checkUpkeep(checkData);
+            assert(!upkeepNeeded);
+
+            //await expect(Manager.callStatic.checkUpkeep(checkData)).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
         });
 
         it("Triggers auto payments for activated agreement in migration period should be successful", async () => {
