@@ -87,7 +87,8 @@ interface IManager {
       address underlayingToken,
       address contractor,
       address contractee,
-      string memory descriptionURI
+      string memory descriptionURI,
+      uint128 currentMigration
     );
 
   /**
