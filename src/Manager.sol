@@ -60,6 +60,20 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     _;
   }
 
+  function isPending(Types.Agreement storage agreement) private returns (bool){
+    if (agreement.state.closed || agreement.state.active) {
+      return false;
+    }
+    return true;
+  }
+
+  function isOngoing(Types.Agreement storage agreement) private returns (bool){
+    if (!agreement.state.active || agreement.state.closed || agreement.state.challenged) {
+      return false;
+    }
+    return true;
+  }
+
   function initialize(uint128 challengeDuration_, address governance_) public initializer {
     initialize_();
     /* Both initializers below are called to comply with OpenZeppelin's
@@ -118,7 +132,8 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
       UNDERLAYING_TOKEN: params.underlayingToken,
       CONTRACTOR: params.contractor,
       CONTRACTEE: msg.sender,
-      DESCRIPTION_URI: params.descriptionURI
+      DESCRIPTION_URI: params.descriptionURI,
+      CURRENT_MIGRATION: 0
     });
 
     userAgreements[msg.sender].push(agreementNonce);
@@ -161,7 +176,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     uint128 migrations = agreementDuration / agreement.parameters.PAYMENT_CYCLE_DURATION;
     bool validMigrationPeriod = false;
     bool reminder = agreementDuration % agreement.parameters.PAYMENT_CYCLE_DURATION != 0;
-    for (uint128 i = 0; i < migrations; i++) {
+    for (uint128 i = agreement.parameters.CURRENT_MIGRATION; i < migrations; i++) {
       uint128 migrationPeriod = agreement.parameters.BEGINNING_DATE +
         (agreement.parameters.PAYMENT_CYCLE_DURATION * (i + 1));
       if (block.timestamp >= migrationPeriod) {
@@ -215,6 +230,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
         agreement.parameters.CONTRACTOR,
         normalizedPaymentAmount
       );
+      agreement.parameters.CURRENT_MIGRATION += 1; // since we paid out
 
       emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
     }
@@ -394,7 +410,8 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
       address underlayingToken,
       address contractor,
       address contractee,
-      string memory descriptionURI
+      string memory descriptionURI,
+      uint128 currentMigration
     )
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -408,7 +425,8 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
       agreement.parameters.UNDERLAYING_TOKEN,
       agreement.parameters.CONTRACTOR,
       agreement.parameters.CONTRACTEE,
-      agreement.parameters.DESCRIPTION_URI
+      agreement.parameters.DESCRIPTION_URI,
+      agreement.parameters.CURRENT_MIGRATION
     );
   }
 
