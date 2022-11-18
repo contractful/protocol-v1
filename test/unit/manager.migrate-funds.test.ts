@@ -4,7 +4,7 @@ import {Manager} from '../../typechain';
 import {setupFixture} from '../utils';
 import {ONE_HOUR} from '../utils/constants';
 import {User} from '../utils/types';
-import {expect} from './helpers/chai-setup';
+import {assert, expect} from './helpers/chai-setup';
 import {setupTestContracts} from './utils';
 
 const setup = deployments.createFixture(async () => {
@@ -33,10 +33,14 @@ describe('Manager - migrateFunds', async function () {
     user1 = testUser1;
   });
 
-  it('Migrating funds for an inactive agreement should revert', async function () {
-    await expect(
-      contractee.Manager.migrateFunds(agreementID)
-    ).to.be.revertedWith('MG_NOT_ONGOING');
+  it('Migrating funds for an inactive agreement should return false', async function () {
+    
+    const { hasMigrated } = await contractee.Manager.migrateFunds(agreementID);
+
+    assert(!hasMigrated);
+    // await expect(
+    //   contractee.Manager.migrateFunds(agreementID)
+    // ).to.be.revertedWith('MG_NOT_ONGOING');
   });
 
   // it('Migrating funds where the msg.sender is not the contractee, keeper or governance should revert', async function () {
@@ -50,15 +54,19 @@ describe('Manager - migrateFunds', async function () {
   //   );
   // });
 
-  it('Migrating funds when it is not the migration period should revert', async function () {
+  it('Migrating funds when it is not the migration period should return false', async function () {
     await expect(contractor.Manager.activateAgreement(agreementID)).to.emit(
       Manager,
       'AgreementActivated'
     );
 
-    await expect(
-      contractee.Manager.migrateFunds(agreementID)
-    ).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
+    const { hasMigrated } = await contractee.Manager.migrateFunds(agreementID);
+
+    assert(!hasMigrated);
+
+    // await expect(
+    //   contractee.Manager.migrateFunds(agreementID)
+    // ).to.be.revertedWith('MG_INVALID_MIGRATION_PERIOD');
   });
 
   it('Migrating funds when the agreement is active, on a migration period as an authorized user should be successful', async function () {

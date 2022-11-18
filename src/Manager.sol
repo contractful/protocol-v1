@@ -210,8 +210,8 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
    */
 
   //TODO: should this be kept internal since we have keepers?
-  function migrateFunds(uint256 agreementID) public whenNotPaused {
-    if (!isOngoing(agreements[agreementID])) return;
+  function migrateFunds(uint256 agreementID) public whenNotPaused returns (bool) {
+    if (!isOngoing(agreements[agreementID])) return false;
     if (checkFundsMigration(agreementID)) {
       Types.Agreement storage agreement = agreements[agreementID];
 
@@ -229,13 +229,15 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
       agreement.parameters.CURRENT_MIGRATION += 1; // since we paid out
 
       emit FundsMigrated(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+      return true;
     }
+    return false;
   }
 
-  function depositFundsForNextCycle(uint256 agreementID) public whenNotPaused {
-    if (!isOngoing(agreements[agreementID])) return;
+  function depositFundsForNextCycle(uint256 agreementID) public whenNotPaused returns (bool) {
+    if (!isOngoing(agreements[agreementID])) return false;
     Types.Agreement storage agreement = agreements[agreementID];
-    if (agreement.state.escrowedFunds != 0) return;
+    if (agreement.state.escrowedFunds != 0) return false;
 
     agreement.state.escrowedFunds += agreement.parameters.PAYMENT_CYCLE_AMOUNT;
     SafeERC20.safeTransferFrom(
@@ -246,6 +248,7 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     );
 
     emit FundsDeposited(agreementID, agreement.parameters.PAYMENT_CYCLE_AMOUNT);
+    return true;
   }
 
   function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData) {
