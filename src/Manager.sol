@@ -60,14 +60,14 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     _;
   }
 
-  function isPending(Types.Agreement storage agreement) private returns (bool){
+  function isPending(Types.Agreement storage agreement) private view returns (bool){
     if (agreement.state.closed || agreement.state.active) {
       return false;
     }
     return true;
   }
 
-  function isOngoing(Types.Agreement storage agreement) private returns (bool){
+  function isOngoing(Types.Agreement storage agreement) private view returns (bool){
     if (!agreement.state.active || agreement.state.closed || agreement.state.challenged) {
       return false;
     }
@@ -167,7 +167,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     public
     view
     whenNotPaused
-    whenOngoing(agreements[agreementID])
     returns (bool)
   {
     Types.Agreement storage agreement = agreements[agreementID];
@@ -199,10 +198,6 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
       }
     }
 
-    if (!validMigrationPeriod) {
-      revert Errors.MG_INVALID_MIGRATION_PERIOD();
-    }
-
     return validMigrationPeriod;
   }
 
@@ -215,7 +210,8 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
    */
 
   //TODO: should this be kept internal since we have keepers?
-  function migrateFunds(uint256 agreementID) public whenNotPaused whenOngoing(agreements[agreementID]) {
+  function migrateFunds(uint256 agreementID) public whenNotPaused {
+    if (!isOngoing(agreements[agreementID])) return;
     if (checkFundsMigration(agreementID)) {
       Types.Agreement storage agreement = agreements[agreementID];
 
@@ -236,11 +232,10 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
     }
   }
 
-  function depositFundsForNextCycle(uint256 agreementID) public whenNotPaused whenOngoing(agreements[agreementID]) {
+  function depositFundsForNextCycle(uint256 agreementID) public whenNotPaused {
+    if (!isOngoing(agreements[agreementID])) return;
     Types.Agreement storage agreement = agreements[agreementID];
-    if (agreement.state.escrowedFunds != 0) {
-      revert Errors.MG_FUNDS_ALREADY_SECURED();
-    }
+    if (agreement.state.escrowedFunds != 0) return;
 
     agreement.state.escrowedFunds += agreement.parameters.PAYMENT_CYCLE_AMOUNT;
     SafeERC20.safeTransferFrom(
@@ -256,8 +251,9 @@ contract Manager is IManager, Validator, AutomationCompatibleInterface {
   function checkUpkeep(bytes calldata) external view override returns (bool upkeepNeeded, bytes memory performData) {
     uint256[] memory agreementsToMigrateFunds = new uint256[](agreementIDs.length);
     uint256 count = 0;
-
+    upkeepNeeded = false;
     for (uint256 idx = 0; idx < agreementIDs.length; idx++) {
+      if (!isOngoing(agreements[agreementIDs[idx]])) continue;
       if (checkFundsMigration(agreementIDs[idx])) {
         upkeepNeeded = true;
         agreementsToMigrateFunds[count] = agreementIDs[idx];
