@@ -1,8 +1,8 @@
 # contractful protocol
 
-\[[Polygon Mumbai testnet | ✅ Deployed](https://mumbai.polygonscan.com/address/0xE4930EDeAd758036Bd830983A26340ac7F366869)\]
+\[[Polygon Mumbai testnet | ✅ Deployed](https://mumbai.polygonscan.com/address/0xF1C00813CA97D0BFf37CF9714B54F1FF2D03ccBb)\]
 
-🙌️  News: **[For early MVP access, click here to participate in our survey from Nov to Dec 2022](https://forms.gle/E3xPJwu6wBbnvB7t6)**.
+🙌️ News: **[For early MVP access, click here to participate in our survey from Nov to Dec 2022](https://forms.gle/E3xPJwu6wBbnvB7t6)**.
 
 The protocol that realizes peer-2-peer, safe and secure Hiring Agreements for everyone to use.
 
@@ -48,10 +48,10 @@ You will also find [more details on the devpost page on the contractful project]
 
 ## The protocol architecture
 
-* The protocol is provided on the **Polygon blockchain** as a Smart Contract.
-* Automated migration of funds is realized through **Chainlink Automation**.
-* Contract details are **stored on IPFS** and linked to the protocol via their `cid`.
-* The protocol is accessible for users through the [contractful frontend application](https://github.com/contractful/frontend-v1) (official demo: <https://contractful.vercel.app/>).
+- The protocol is provided on the **Polygon blockchain** as a Smart Contract.
+- Automated migration of funds is realized through **Chainlink Automation**.
+- Contract details are **stored on IPFS** and linked to the protocol via their `cid`.
+- The protocol is accessible for users through the [contractful frontend application](https://github.com/contractful/frontend-v1) (official demo: <https://contractful.vercel.app/>).
 
 ### Why Polygon?
 
